@@ -136,12 +136,16 @@ groups:
               editorMode: code
               format: table
               rawQuery: true
+              # Una sola columna: el motor de alertas reduce el frame y con
+              # dos campos numéricos marcaba health=error.
+              # HAVING count(*) >= 5 → con menos de 5 runs no hay fila (noData=OK).
               rawSql: >-
-                SELECT count(*) FILTER (WHERE state = 'failed')::float * 100
-                       / GREATEST(count(*), 1) AS ratio,
-                       count(*) AS total
+                SELECT round(coalesce(
+                         sum(CASE WHEN state = 'failed' THEN 1 ELSE 0 END)::numeric
+                         * 100 / nullif(count(*), 0), 0), 1) AS ratio
                 FROM dag_run
                 WHERE execution_date > now() - interval '1 hour'
+                HAVING count(*) >= 5
           - refId: B
             datasourceUid: __expr__
             model:

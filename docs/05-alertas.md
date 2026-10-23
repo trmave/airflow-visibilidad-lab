@@ -36,6 +36,23 @@ $ curl -s -u admin:*** http://127.0.0.1:3050/api/v1/provisioning/alert-rules
   `running > 1 h` y `parse-stale` en la primera semana; las otras dos cuando el equipo ya mire
   el tablero a diario.
 
+Estado real de las 4 reglas tras el arranque (motor de alertas evaluando cada minuto):
+
+```text
+Airflow · DAG corriendo más de 1 hora                  state=pending    health=ok
+Airflow · Runs en cola más de 15 minutos               state=pending    health=ok
+Airflow · Tasa de fallos superior al 20 % en la últi   state=inactive   health=ok
+Airflow · DAGs sin parsear hace más de 2 horas         state=inactive   health=ok
+```
+
+- `pending` = la condición se cumple y está dentro del `for` (pasará a **Alerting**).
+- `inactive` = la condición no se cumple ahora mismo (12,5 % de fallos < 20 %; nada viejo en el parseo).
+- `health=ok` en las cuatro = la query y la expresión se evalúan sin error.
+
+> Ojo con la regla del ratio: se escribió primero con **dos** columnas (`ratio`, `total`) y el
+> motor de alertas la marcaba `health=error` aunque el SQL fuese correcto en `psql`. Con una sola
+> columna + `HAVING count(*) >= 5` (menos de 5 runs = sin fila = `noDataState: OK`) quedó sana.
+
 ## Puntos de notificación (lo que falta para que esto avise)
 
 El laboratorio **no** configura contacto a propósito: no hay a quién avisar y no se manda correo
