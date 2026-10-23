@@ -1,0 +1,209 @@
+# ===========================================================================
+# Alertas del tablero de Airflow.
+#
+# Se provisionan por fichero (no por clics) para que viajen con el repositorio
+# y se puedan revisar en un diff. Cada regla consulta el mismo datasource de
+# solo lectura que los paneles.
+#
+# UMBRALES: pensados para producción. El panel de cola es el más "ruidoso" en
+# Kubernetes; si el cliente no puede absorber el aviso, se sube el `for` antes
+# de subir el umbral (mejor un minuto de margen que perder la señal).
+# ===========================================================================
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: airflow-visibilidad
+    folder: Airflow
+    interval: 1m
+    rules:
+
+      # ---------------------------------------------------------------------
+      # 1. Un dag_run lleva más de 1 hora corriendo.
+      #    Es la alerta que justifica todo el proyecto: hoy nadie se enteraría.
+      # ---------------------------------------------------------------------
+      - uid: airflow-running-1h
+        title: Airflow · DAG corriendo más de 1 hora
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          componente: airflow
+        annotations:
+          summary: "Hay {{ $values.B.Value }} DAG(s) con más de 1 hora en estado running"
+          description: >-
+            Revisar el panel "Corriendo más de 1 hora · detalle" del dashboard
+            Airflow 2.8.1 · Visibilidad de DAGs. Si el volumen es alto, mirar
+            también pods Pending y presión de memoria en los workers.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: airflow-pg
+            model:
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT count(*) AS lentos FROM dag_run
+                WHERE state = 'running' AND start_date < now() - interval '1 hour'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [B]}
+                  reducer: {type: last}
+
+      # ---------------------------------------------------------------------
+      # 2. Runs atascados en cola. En Kubernetes casi siempre es un pod Pending.
+      # ---------------------------------------------------------------------
+      - uid: airflow-queued-15m
+        title: Airflow · Runs en cola más de 15 minutos
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          componente: airflow
+        annotations:
+          summary: "{{ $values.B.Value }} run(s) llevan más de 15 min en cola"
+          description: >-
+            Revisar pods Pending (kubectl get pods --field-selector=status.phase=Pending),
+            PVC sin bound y pools saturados. En LocalExecutor revisar max_active_runs.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: airflow-pg
+            model:
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT count(*) AS en_cola FROM dag_run
+                WHERE state = 'queued' AND queued_at < now() - interval '15 minutes'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [B]}
+                  reducer: {type: last}
+
+      # ---------------------------------------------------------------------
+      # 3. Tasa de fallo alta en la última hora (> 20 % con al menos 5 runs).
+      #    El mínimo de 5 evita alertar por un único run fallido de madrugada.
+      # ---------------------------------------------------------------------
+      - uid: airflow-fail-ratio
+        title: Airflow · Tasa de fallos superior al 20 % en la última hora
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: info
+          componente: airflow
+        annotations:
+          summary: "Ratio de fallos {{ $values.C.Value | printf \"%.0f\" }}% en la última hora"
+          description: >-
+            Ver el panel "Top 10 DAGs con más fallos". Si es un solo DAG, es su
+            problema; si son varios, sospechar de una dependencia externa o del clúster.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: airflow-pg
+            model:
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT count(*) FILTER (WHERE state = 'failed')::float * 100
+                       / GREATEST(count(*), 1) AS ratio,
+                       count(*) AS total
+                FROM dag_run
+                WHERE execution_date > now() - interval '1 hour'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [20]}
+                  operator: {type: and}
+                  query: {params: [B]}
+                  reducer: {type: last}
+
+      # ---------------------------------------------------------------------
+      # 4. El scheduler está vivo pero dejó de leer los DAGs.
+      #    Sin esto, los paneles 1-5 mienten por omisión.
+      # ---------------------------------------------------------------------
+      - uid: airflow-parse-stale
+        title: Airflow · DAGs sin parsear hace más de 2 horas
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          componente: airflow
+        annotations:
+          summary: "{{ $values.B.Value }} DAG(s) con last_parsed_time de más de 2 horas"
+          description: >-
+            Revisar import errors (panel "Salud del parseo"), el repositorio de DAGs
+            y los logs del scheduler. Si el número baja de golpe, los paneles de
+            conteo están mintiendo.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: airflow-pg
+            model:
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT count(*) FILTER (
+                         WHERE last_parsed_time < now() - interval '2 hours'
+                       ) AS viejos
+                FROM dag WHERE is_active
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [B]}
+                  reducer: {type: last}

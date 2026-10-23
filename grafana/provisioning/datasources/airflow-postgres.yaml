@@ -1,0 +1,28 @@
+# Datasource de solo lectura contra la metadata DB de Airflow.
+# La contraseña NO está aquí: se inyecta desde la variable de entorno
+# AIRFLOW_RO_PASSWORD del contenedor de Grafana ($__env{...}).
+apiVersion: 1
+
+datasources:
+  - name: Airflow metadata
+    uid: airflow-pg
+    type: postgres
+    access: proxy
+    url: airflow-pg:5432
+    database: airflow
+    user: grafana_ro
+    isDefault: true
+    editable: false
+    jsonData:
+      # Grafana >= 12 (plugin grafana-postgresql-datasource) exige la base por
+      # defecto dentro de jsonData; sin esta clave el front-end se niega a
+      # lanzar la query ("You do not currently have a default database").
+      database: airflow
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: $__env{AIRFLOW_RO_PASSWORD}

@@ -1,0 +1,38 @@
+"""DAG de relleno generado por scripts/generate_demo_dags.py"""
+from datetime import datetime, timedelta
+
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+
+DEFAULT_ARGS = {
+    "owner": "equipo-finanzas",
+    "retries": 1,
+    "retry_delay": timedelta(minutes=2),
+}
+
+FALLA = True
+
+
+def paso_negocio(**_):
+    """Falla de forma determinista según la fecha y la tasa del DAG."""
+    from datetime import datetime as _dt
+    if FALLA and _dt.utcnow().hour % 7 == 0:
+        raise RuntimeError("dependencia externa no disponible (503)")
+    print("paso de negocio completado")
+
+
+with DAG(
+    dag_id="demo_bulk_01_facturacion",
+    description="Cierre de facturación por sucursal (#01)",
+    start_date=datetime(2026, 9, 15),
+    schedule="0 * * * *",
+    catchup=False,
+    max_active_runs=1,
+    default_args=DEFAULT_ARGS,
+    tags=["demo", "bulk", "facturacion"],
+) as dag:
+    extraer = BashOperator(task_id="extraer", bash_command="echo extrayendo; sleep 2")
+    transformar = PythonOperator(task_id="transformar", python_callable=paso_negocio)
+    cargar = BashOperator(task_id="cargar", bash_command="echo cargando; sleep 2")
+    extraer >> transformar >> cargar

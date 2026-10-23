@@ -1,0 +1,15 @@
+# Carga automática de los dashboards que estén en /var/lib/grafana/dashboards.
+apiVersion: 1
+
+providers:
+  - name: airflow-lab
+    orgId: 1
+    folder: Airflow
+    folderUid: airflow-folder
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
