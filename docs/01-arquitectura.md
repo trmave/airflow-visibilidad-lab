@@ -83,6 +83,31 @@ avanza suele ser un **pod `Pending`** (sin CPU/memoria, PVC sin bound, imagen qu
 `nodeSelector`/`toleration` mal puestos). Airflow no lo dice: el run simplemente espera. Por eso
 el panel está desde el primer día, aunque el cliente no lo haya pedido.
 
+## Cómo viaja un dato: el recorrido de una consulta
+
+No hay ningún agente enviando métricas. Grafana pregunta, Postgres responde, el panel dibuja.
+
+```mermaid
+sequenceDiagram
+    participant U as Navegador (Tulio)
+    participant G as Grafana
+    participant P as PostgreSQL (metadata DB)
+    participant A as Airflow (scheduler)
+
+    A->>P: escribe dag_run (state=running → success/failed)
+    U->>G: abre el dashboard
+    loop cada 30 s (refresh)
+        G->>P: SELECT count(*) … WHERE state='success' (rol grafana_ro)
+        P-->>G: 565
+        G-->>U: pinta el panel "Runs OK"
+    end
+    Note over G,P: si Postgres no responde:<br/>el panel pasa a Error (y la alerta notifica)
+```
+
+Consecuencia: el tablero **no guarda nada**; es un visor. La persistencia de los datos es la
+metadata DB de Airflow y la retención la decide su política de purga
+(`airflow db clean --clean-before-timestamp`), no Grafana.
+
 ## Estructura del laboratorio
 
 ```text

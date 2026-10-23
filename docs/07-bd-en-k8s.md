@@ -62,6 +62,9 @@ proyecto sin hablarlo con quien la administra.
 
 ### Escalón 2 · Exportar los agregados fuera del clúster (coste medio, recomendado si piden historia)
 
+> Diseño completo, modelo de métricas, esqueleto del colector y criterios de aceptación:
+> [`08-fase2-externalizacion.md`](08-fase2-externalizacion.md). **Decidido: no entra en el MVP.**
+
 La idea: no mover la DB, mover **el resultado de las 5 preguntas**. Un `CronJob` dentro del
 clúster (que sí alcanza la DB) calcula los KPIs cada minuto y los empuja a la VM.
 

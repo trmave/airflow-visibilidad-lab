@@ -172,7 +172,10 @@ decida el canal (email, Slack, Teams, PagerDuty) y quién recibe qué. Recomenda
 **una sola** alerta en producción (corriendo > 1 h), que es la que hoy les cuesta dinero, y
 añadir las demás tras dos semanas de observación.
 
-### F4 · Opcional · Prometheus (1-2 jornadas)
+### F4 · Opcional · Prometheus / InfluxDB (1-2 jornadas)
+
+> Diseño ya escrito y congelado para cuando llegue el caso: [`08-fase2-externalizacion.md`](08-fase2-externalizacion.md).
+> **No forma parte del MVP**: se ofrece aparte, con alcance y precio propios.
 
 Solo si el cliente ya tiene Prometheus y quiere las métricas junto al resto:
 
