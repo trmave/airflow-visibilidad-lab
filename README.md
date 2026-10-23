@@ -20,6 +20,18 @@ tienen respuesta en el Airflow del cliente:
 > Los números son los que devolvió Grafana al ejecutar los 12 paneles contra la metadata DB
 > real de un Airflow 2.8.1 recién levantado. Reproducibles con `scripts/verify_dashboard.py`.
 
+## Dos tableros, dos vías
+
+| | **Vía A · en vivo** | **Vía B · histórico** |
+|---|---|---|
+| URL | <http://192.168.3.39:3050/d/airflow-visibilidad> | <http://192.168.3.39:3050/d/airflow-historico> |
+| Fuente | metadata DB de Airflow | **InfluxDB** (colector cada 30 s) |
+| Si cae el clúster | paneles en error | **sigue dibujando** |
+
+La vía B existe para demostrar la externalización: parando Postgres, la vía A se queda en
+"No data" y la vía B sigue mostrando el histórico. Prueba hecha y documentada en
+[`docs/09-fase2-implementada.md`](docs/09-fase2-implementada.md).
+
 ## Por qué la metadata DB y no StatsD
 
 Airflow expone métricas por StatsD (`dagbag_size`, `dag_processing.import_errors`,
@@ -122,8 +134,13 @@ RESULTADO: 12 paneles verificados, 0 con error
 │   ├── 10_rol_grafana_ro.sql        # rol de solo lectura para Grafana
 │   ├── 20_seed_historico.sql        # histórico de los 6 DAGs de historia
 │   └── 21_seed_bulk.sql             # histórico de los 40 DAGs de volumen
+├── collector/                       # fase 2: KPI de Airflow → InfluxDB (cada 30 s)
+│   ├── collector.py
+│   └── Dockerfile
 ├── scripts/
 │   ├── generate_dashboard.py        # genera el JSON del dashboard (SQL versionado)
+│   ├── generate_dashboard_historico.py  # genera el dashboard de la vía B (Flux)
+│   ├── verify_historico.py          # verifica los paneles de la vía B
 │   ├── generate_demo_dags.py        # genera los 40 DAGs de volumen
 │   └── verify_dashboard.py          # ejecuta cada panel contra Grafana y valida
 └── docs/                            # documentación y plan para el cliente
@@ -140,7 +157,8 @@ RESULTADO: 12 paneles verificados, 0 con error
 | [`docs/05-alertas.md`](docs/05-alertas.md) | Reglas de alerta con umbrales y provisioning YAML |
 | [`docs/06-lecciones.md`](docs/06-lecciones.md) | Errores reales encontrados al montarlo y cómo se resolvieron |
 | [`docs/07-bd-en-k8s.md`](docs/07-bd-en-k8s.md) | Qué hacer si la metadata DB vive dentro del clúster (escalones de resiliencia) |
-| [`docs/08-fase2-externalizacion.md`](docs/08-fase2-externalizacion.md) | **Fase 2 (no implementada)**: externalizar las métricas a InfluxDB/Prometheus — diseño, diagrama y disparadores |
+| [`docs/08-fase2-externalizacion.md`](docs/08-fase2-externalizacion.md) | **Fase 2**: diseño de la externalización a InfluxDB/Prometheus — diagrama, modelo de métricas y disparadores |
+| [`docs/09-fase2-implementada.md`](docs/09-fase2-implementada.md) | La fase 2 montada en el laboratorio, con la prueba de caída (capturas incluidas) |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 
 ## Límites honestos de este laboratorio

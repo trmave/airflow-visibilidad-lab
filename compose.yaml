@@ -136,6 +136,8 @@ services:
       GF_RENDERING_SERVER_URL: http://grafana-renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_RENDERING_RENDERER_TOKEN: ${RENDERER_TOKEN}
+      # Token del datasource de InfluxDB (fase 2: histórico externalizado).
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
 
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -148,6 +150,61 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # FASE 2 · almacén externo. El colector lee la metadata DB (rol de solo
+  # lectura) y escribe los KPIs aquí; Grafana lee de aquí. Si el clúster de
+  # Airflow cae, estos dos siguen vivos y el histórico se mantiene.
+  # Puerto 8086 NO publicado: solo se usa dentro de la red del laboratorio.
+  # ---------------------------------------------------------------------------
+  influxdb:
+    image: influxdb:2.9.1-alpine
+    container_name: airflow-lab-influx
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_ADMIN_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: homelab
+      DOCKER_INFLUXDB_INIT_BUCKET: airflow
+      # Retención de demo: 30 días. En el cliente, 2 años + downsampling.
+      DOCKER_INFLUXDB_INIT_RETENTION: 720h
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - influxdata:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/health | grep -q pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    restart: unless-stopped
+
+  collector:
+    build: ./collector
+    container_name: airflow-lab-collector
+    environment:
+      AIRFLOW_DB_DSN: postgresql://grafana_ro:${GRAFANA_RO_PASSWORD}@airflow-pg:5432/airflow
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: homelab
+      INFLUX_BUCKET: airflow
+      INTERVAL: "30"
+    depends_on:
+      airflow-pg:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
     logging:
       driver: json-file
       options:
@@ -179,3 +236,4 @@ networks:
 volumes:
   pgdata:
   grafanadata:
+  influxdata:

@@ -74,6 +74,14 @@ Sin datos fríos: todo es NVMe (4.338 filas, 3,5 GB de imágenes). El laboratori
 - Lectura anónima en Grafana y HTTP plano, solo para LAN de demo.
 - `queued` se simula con `max_active_runs`, no con pods Pending.
 
+## Fase 2 montada (solo para demo)
+
+`influxdb:2.9.1-alpine` + `collector/` (imagen propia) + datasource `influx-airflow` + dashboard
+`airflow-historico`. El colector escribe cada 30 s con el rol `grafana_ro` y publica un latido
+(`collector_last_success`). Prueba de caída hecha: con Postgres parado, la vía A queda en "No data"
+y la vía B sigue dibujando. Detalle en `docs/09-fase2-implementada.md`.
+**En el cliente sigue siendo fase aparte (CronJob + Secret), no MVP.**
+
 ## Pendiente
 
 - Puntos de notificación de alertas (no hay a quién avisar desde el nodo).

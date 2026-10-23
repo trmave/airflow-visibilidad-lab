@@ -1,0 +1,20 @@
+# Datasource de la FASE 2: lee del almacén externo (InfluxDB), no de la
+# metadata DB de Airflow. Es lo que permite que el tablero sobreviva a la
+# caída del clúster. El token se inyecta desde el entorno, nunca del repo.
+apiVersion: 1
+
+datasources:
+  - name: Airflow histórico
+    uid: influx-airflow
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    editable: false
+    jsonData:
+      version: Flux
+      organization: homelab
+      defaultBucket: airflow
+      tlsSkipVerify: true
+      httpMode: POST
+    secureJsonData:
+      token: $__env{INFLUX_TOKEN}

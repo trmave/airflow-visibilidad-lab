@@ -1,9 +1,12 @@
 # 08 · Fase 2 · Externalizar las métricas a un TSDB
 
-> **Estado: NO implementada — decisión tomada, no descartada.** El MVP funciona leyendo la
-> metadata DB directamente. Esta fase solo se activa cuando el cliente pide una de las dos cosas
-> que la justifican (ver "Disparadores"). Se documenta ahora para que la conversación no empiece
-> de cero y para que el día que se haga no haya que re-diseñarla.
+> **Estado: implementada en el laboratorio, NO en el MVP del cliente.** El MVP sigue leyendo la
+> metadata DB directamente; esta fase se montó aquí para **poder demostrarla** y para que, si el
+> cliente la pide, no haya que diseñarla de cero. Qué se construyó exactamente y cómo se prueba:
+> [`09-fase2-implementada.md`](09-fase2-implementada.md).
+
+> La forma de activarla en el cliente no cambia: solo cuando pide una de las dos cosas de
+> "Disparadores", y con alcance y precio propios.
 
 ## El problema que resuelve
 
