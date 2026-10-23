@@ -1,0 +1,181 @@
+name: airflow-lab
+
+# ============================================================================
+# Laboratorio de visibilidad de Airflow 2.8.1 (Python 3.10)
+# Réplica del stack del cliente: Postgres como metadata DB + webserver +
+# scheduler (LocalExecutor) + Grafana con el dashboard provisionado.
+# NO toca nada más del nodo: red propia, volúmenes propios, puertos propios.
+# ============================================================================
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.1-python3.10
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${PG_AIRFLOW_PASSWORD}@airflow-pg:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: UTC
+    AIRFLOW__CORE__PARALLELISM: "8"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "4"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__WEBSERVER__BASE_URL: http://192.168.3.39:8085
+    AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: "300"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+    AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
+    AIRFLOW__METRICS__STATSD_ON: "false"
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    airflow-pg:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+  restart: unless-stopped
+
+services:
+  airflow-pg:
+    image: postgres:16.11-alpine
+    container_name: airflow-lab-pg
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${PG_AIRFLOW_PASSWORD}
+      POSTGRES_DB: airflow
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    restart: unless-stopped
+
+  # Crea el esquema de Airflow y el usuario admin. Debe terminar antes que
+  # webserver y scheduler (condition: service_completed_successfully).
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-lab-init
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password ${AIRFLOW_ADMIN_PASSWORD} \
+          --firstname Admin --lastname Lab \
+          --role Admin --email admin@lab.local || true
+        echo INIT_OK
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-lab-webserver
+    command: ["webserver"]
+    ports:
+      - "8085:8080"
+    depends_on:
+      airflow-pg:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-lab-scheduler
+    command: ["scheduler"]
+    depends_on:
+      airflow-pg:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname)"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 60s
+
+  grafana:
+    image: grafana/grafana-oss:13.0.2
+    container_name: airflow-lab-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Laboratorio en LAN: lectura anónima como Viewer, para poder abrir el
+      # dashboard sin login (y para capturas). La edición sigue exigiendo admin.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_SERVER_ROOT_URL: http://192.168.3.39:3050
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Contraseña del rol read-only que Grafana usa contra la metadata DB.
+      # La consume el provisioning con $__env{AIRFLOW_RO_PASSWORD}.
+      AIRFLOW_RO_PASSWORD: ${GRAFANA_RO_PASSWORD}
+      # Renderizado de paneles a PNG (capturas para documentación y PDFs).
+      GF_INSTALL_PLUGINS: grafana-image-renderer
+      GF_RENDERING_SERVER_URL: http://grafana-renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_RENDERING_RENDERER_TOKEN: ${RENDERER_TOKEN}
+
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3050:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q '\"database\": \"ok\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    restart: unless-stopped
+
+  # Chromium empaquetado en su propio contenedor: sirve para generar capturas
+  # del dashboard sin depender del navegador del host.
+  grafana-renderer:
+    image: grafana/grafana-image-renderer:v5.12.8
+    container_name: airflow-lab-renderer
+    environment:
+      ENABLE_METRICS: "true"
+      # Debe coincidir con GF_RENDERING_RENDERER_TOKEN de Grafana.
+      AUTH_TOKEN: ${RENDERER_TOKEN}
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: airflow-lab-net
+
+volumes:
+  pgdata:
+  grafanadata:

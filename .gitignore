@@ -1,0 +1,13 @@
+# secretos y estado local
+.env
+logs/
+*.log
+
+# datos de los contenedores (viven en volúmenes, pero por si alguien monta bind)
+pgdata/
+grafanadata/
+
+# basura
+__pycache__/
+*.pyc
+.DS_Store
