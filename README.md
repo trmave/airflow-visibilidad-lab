@@ -6,10 +6,14 @@ tienen respuesta en el Airflow del cliente:
 | # | Pregunta | Panel | Valor en este laboratorio |
 |---|---|---|---|
 | 1 | ¿Cuántos DAGs hay en total? | `DAGs activos` | **46** |
-| 2 | ¿Cuántos se ejecutaron bien? | `Runs OK · 24 h` | **265** |
-| 3 | ¿Cuántos fallaron? | `Runs fallidos · 24 h` | **40** |
-| 4 | ¿Cuántos llevan corriendo más de 1 hora? | `Corriendo > 1 hora` | **2** (110 y 70 min) |
+| 2 | ¿Cuántos se ejecutaron bien? | `Runs OK · 24 h` | **266** |
+| 3 | ¿Cuántos fallaron? | `Runs fallidos · 24 h` | **41** |
+| 4 | ¿Cuántos llevan corriendo más de 1 hora? | `Corriendo > 1 hora` | **2** (115 y 75 min) |
 | 5 | ¿Cuántos están atascados en cola? | `En cola > 15 min` | **8** |
+
+> Cifras de la última verificación (23-oct-2026, 05:35 UTC). El laboratorio sigue vivo y los 46
+> DAGs generan ejecuciones, así que los conteos suben con el tiempo: eso es exactamente lo que
+> tiene que pasar.
 
 ![Dashboard de visibilidad de DAGs](docs/img/dashboard.png)
 
@@ -82,17 +86,17 @@ DATASOURCE  uid=airflow-pg  type=grafana-postgresql-datasource  db=airflow  user
             health: OK  Database Connection OK
 DASHBOARD   uid=airflow-visibilidad  paneles=12  título=Airflow 2.8.1 · Visibilidad de DAGs
 [ OK ]  1 DAGs activos                        filas=1   {"dags_activos": 46, "pausados": 0}
-[ OK ]  2 Runs OK · $ventana                  filas=1   {"ok": 265}
-[ OK ]  3 Runs fallidos · $ventana            filas=1   {"fallidos": 40}
+[ OK ]  2 Runs OK · $ventana                  filas=1   {"ok": 266}
+[ OK ]  3 Runs fallidos · $ventana            filas=1   {"fallidos": 41}
 [ OK ]  4 Corriendo > 1 hora                  filas=1   {"mas_de_1_hora": 2}
 [ OK ]  5 En cola > 15 min                    filas=1   {"en_cola_mas_15min": 8}
 [ OK ]  6 Runs por estado en el tiempo        filas=25
 [ OK ]  7 Top 10 DAGs con más fallos          filas=10
-[ OK ]  8 Corriendo más de 1 hora · detalle   filas=2   (110 y 70 minutos)
+[ OK ]  8 Corriendo más de 1 hora · detalle   filas=2   (115 y 75 minutos)
 [ OK ]  9 En cola más de 15 minutos · detalle filas=8
 [ OK ] 10 Último estado de cada DAG           filas=46
 [ OK ] 11 Salud del parseo                    filas=1   {"con_error_import": 0, "parseo_viejo": 0}
-[ OK ] 12 Runs de las últimas 24 h            filas=1   {"runs_24h": 315}
+[ OK ] 12 Runs de las últimas 24 h            filas=1   {"runs_24h": 316}
 ==============================================================================
 RESULTADO: 12 paneles verificados, 0 con error
 ```
