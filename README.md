@@ -139,6 +139,7 @@ RESULTADO: 12 paneles verificados, 0 con error
 | [`docs/04-plan-cliente.md`](docs/04-plan-cliente.md) | **Plan de implantación en el cliente** (Airflow en k8s + Grafana en VM) |
 | [`docs/05-alertas.md`](docs/05-alertas.md) | Reglas de alerta con umbrales y provisioning YAML |
 | [`docs/06-lecciones.md`](docs/06-lecciones.md) | Errores reales encontrados al montarlo y cómo se resolvieron |
+| [`docs/07-bd-en-k8s.md`](docs/07-bd-en-k8s.md) | Qué hacer si la metadata DB vive dentro del clúster (escalones de resiliencia) |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 
 ## Límites honestos de este laboratorio
