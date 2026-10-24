@@ -146,6 +146,21 @@ RESULTADO: 12 paneles verificados, 0 con error
 └── docs/                            # documentación y plan para el cliente
 ```
 
+## Paquete F0 para el cliente
+
+[`cliente/f0-descubrimiento.sh`](cliente/f0-descubrimiento.sh) — script **de solo lectura** que su
+equipo ejecuta en el clúster (`bash f0-descubrimiento.sh | tee f0-informe.md`) y devuelve un
+informe en Markdown: versión real de Airflow, executor, motor y tamaño de la metadata DB con las
+credenciales enmascaradas, índices de `dag_run`, réplicas del scheduler, Prometheus, Ingress y
+CronJob de purga. No escribe nada y no necesita acceso a la base desde fuera: consulta desde el
+propio pod del scheduler.
+
+```bash
+export AIRFLOW_NS=airflow                 # opcional, lo detecta solo
+export GRAFANA_URL=http://10.0.0.5:3000   # opcional, para probar la ruta
+bash cliente/f0-descubrimiento.sh | tee f0-informe.md
+```
+
 ## Documentación
 
 | Documento | Para qué |
