@@ -24,6 +24,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
     AIRFLOW__METRICS__STATSD_ON: "false"
+    # EXPERIMENTO opción C: la API de Airflow 2.8.1 solo acepta cookie de sesión
+    # por defecto; para consultarla desde un programa hay que habilitar
+    # basic_auth (o JWT). Ver docs/13.
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
     AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
   volumes:
     - ./dags:/opt/airflow/dags

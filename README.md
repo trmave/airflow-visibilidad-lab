@@ -192,6 +192,7 @@ bash cliente/f0-descubrimiento.sh | tee f0-informe.md
 | [`docs/10-alertas-notificacion.md`](docs/10-alertas-notificacion.md) | Cadena de alertas completa: regla → contacto → aviso, con la prueba hecha |
 | [`docs/11-rehacer-desde-cero.md`](docs/11-rehacer-desde-cero.md) | **Reconstruir el laboratorio desde un host limpio en un comando** |
 | [`docs/12-propuesta.md`](docs/12-propuesta.md) | **Propuesta para presentar**: las dos opciones comparadas, recomendación y guion de demo |
+| [`docs/13-opcion-api-rest.md`](docs/13-opcion-api-rest.md) | Tercera opción (API REST de Airflow): medida real y por qué no entra en el MVP |
 | [`docs/presentacion-dos-opciones.pptx`](docs/presentacion-dos-opciones.pptx) | Deck de 10 diapositivas para enseñar las dos opciones |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 
