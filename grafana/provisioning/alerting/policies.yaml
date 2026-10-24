@@ -1,0 +1,18 @@
+# Política de notificación: a qué receptor va cada severidad.
+#
+# Regla de oro: critical despierta a alguien, info se lee por la mañana.
+# En el laboratorio todo va al mismo webhook para poder verlo en pantalla.
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: webhook-laboratorio
+    group_by: ["alertname", "severity"]
+    group_wait: 10s
+    group_interval: 30s
+    repeat_interval: 1h
+    routes:
+      - receiver: webhook-laboratorio
+        object_matchers:
+          - ["severity", "=~", "critical|warning|info"]
+        continue: false

@@ -72,6 +72,18 @@ datos con `SELECT` y `statement_timeout = 30s`. Nada del resto del nodo se toca.
 ## Arranque
 
 ```bash
+git clone https://github.com/trmave/airflow-visibilidad-lab.git airflow-lab
+cd airflow-lab
+bash bootstrap.sh        # todo: secretos, 8 servicios, rol read-only, histórico y verificación
+```
+
+`bootstrap.sh` es idempotente y termina diciendo si quedó todo bien. Para empezar de cero de
+verdad: `docker compose down -v && bash bootstrap.sh`. Guía completa en
+[`docs/11-rehacer-desde-cero.md`](docs/11-rehacer-desde-cero.md).
+
+### Manual, paso a paso
+
+```bash
 cd /srv/appdata/airflow-lab
 
 # 1. Arrancar el stack (Postgres → migración + usuario admin → webserver/scheduler → Grafana)
@@ -134,6 +146,9 @@ RESULTADO: 12 paneles verificados, 0 con error
 │   ├── 10_rol_grafana_ro.sql        # rol de solo lectura para Grafana
 │   ├── 20_seed_historico.sql        # histórico de los 6 DAGs de historia
 │   └── 21_seed_bulk.sql             # histórico de los 40 DAGs de volumen
+├── bootstrap.sh                     # levanta TODO desde cero y verifica (idempotente)
+├── cliente/f0-descubrimiento.sh     # reconocimiento read-only para el cliente (F0)
+├── webhook/server.py                # destinatario de alertas (demuestra la cadena completa)
 ├── collector/                       # fase 2: KPI de Airflow → InfluxDB (cada 30 s)
 │   ├── collector.py
 │   └── Dockerfile
@@ -174,6 +189,8 @@ bash cliente/f0-descubrimiento.sh | tee f0-informe.md
 | [`docs/07-bd-en-k8s.md`](docs/07-bd-en-k8s.md) | Qué hacer si la metadata DB vive dentro del clúster (escalones de resiliencia) |
 | [`docs/08-fase2-externalizacion.md`](docs/08-fase2-externalizacion.md) | **Fase 2**: diseño de la externalización a InfluxDB/Prometheus — diagrama, modelo de métricas y disparadores |
 | [`docs/09-fase2-implementada.md`](docs/09-fase2-implementada.md) | La fase 2 montada en el laboratorio, con la prueba de caída (capturas incluidas) |
+| [`docs/10-alertas-notificacion.md`](docs/10-alertas-notificacion.md) | Cadena de alertas completa: regla → contacto → aviso, con la prueba hecha |
+| [`docs/11-rehacer-desde-cero.md`](docs/11-rehacer-desde-cero.md) | **Reconstruir el laboratorio desde un host limpio en un comando** |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 
 ## Límites honestos de este laboratorio

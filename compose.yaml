@@ -212,6 +212,24 @@ services:
         max-file: "5"
     restart: unless-stopped
 
+  # Destinatario de las alertas, para demostrar la cadena completa:
+  # regla → punto de contacto → aviso. En el cliente esto es Slack/Teams/PagerDuty.
+  # http://192.168.3.39:8099 muestra las alertas recibidas (solo laboratorio).
+  webhook:
+    image: python:3.12-slim
+    container_name: airflow-lab-webhook
+    command: ["python", "-u", "/app/server.py"]
+    volumes:
+      - ./webhook/server.py:/app/server.py:ro
+    ports:
+      - "8099:8099"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
   # Chromium empaquetado en su propio contenedor: sirve para generar capturas
   # del dashboard sin depender del navegador del host.
   grafana-renderer:

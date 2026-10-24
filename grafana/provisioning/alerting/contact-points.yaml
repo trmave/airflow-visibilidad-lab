@@ -1,0 +1,21 @@
+# Punto de contacto y política de notificación.
+#
+# La cadena completa es: regla (airflow.yaml) → punto de contacto (aquí) →
+# política (aquí) → destinatario (contenedor webhook del laboratorio).
+#
+# En el cliente, el receptor es Slack/Teams/PagerDuty/email: cambia solo el
+# tipo y los settings del receiver; la política y las reglas se quedan igual.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: webhook-laboratorio
+    receivers:
+      - uid: webhook-laboratorio
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: http://webhook:8099/alerta
+          httpMethod: POST
+          maxAlerts: 10
+        # Los avisos de "resuelta" también llegan: así se ve el ciclo completo.
