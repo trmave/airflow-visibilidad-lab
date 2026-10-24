@@ -164,6 +164,8 @@ RESULTADO: 12 paneles verificados, 0 con error
 │   ├── verify_historico.py          # verifica los paneles de la vía B
 │   ├── generate_dashboard_api.py    # genera el dashboard de la vía C (API REST)
 │   ├── verify_api.py                # verifica los paneles de la vía C
+│   ├── benchmark.py                 # mide latencia/CPU/bytes de las tres vías
+│   ├── generate_benchmark_chart.py  # gráfico SVG del benchmark
 │   ├── generate_demo_dags.py        # genera los 40 DAGs de volumen
 │   └── verify_dashboard.py          # ejecuta cada panel contra Grafana y valida
 └── docs/                            # documentación y plan para el cliente
@@ -201,6 +203,7 @@ bash cliente/f0-descubrimiento.sh | tee f0-informe.md
 | [`docs/11-rehacer-desde-cero.md`](docs/11-rehacer-desde-cero.md) | **Reconstruir el laboratorio desde un host limpio en un comando** |
 | [`docs/12-propuesta.md`](docs/12-propuesta.md) | **Propuesta para presentar**: las dos opciones comparadas, recomendación y guion de demo |
 | [`docs/13-opcion-api-rest.md`](docs/13-opcion-api-rest.md) | Tercera opción (API REST de Airflow): montada, medida y con sus límites |
+| [`docs/14-benchmark.md`](docs/14-benchmark.md) | **Benchmark medido de las tres vías**: latencia, CPU y sensibilidad al volumen |
 | [`docs/presentacion-dos-opciones.pptx`](docs/presentacion-dos-opciones.pptx) | Deck de 10 diapositivas para enseñar las dos opciones |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 

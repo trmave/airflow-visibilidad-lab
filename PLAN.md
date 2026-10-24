@@ -90,6 +90,13 @@ usuario `Viewer` (`grafana_api`). Requiere `basic_auth` habilitado en el webserv
 `bootstrap.sh` y está en `.gitignore`. Límites: sin serie temporal ni ranking por DAG; la carga va
 al webserver. Detalle y trampas: `docs/13-opcion-api-rest.md`.
 
+## Benchmark (docs/14-benchmark.md)
+
+Medido con `scripts/benchmark.py` en tres escenarios (5.567 filas, 203.367 filas y 203.367 con
+índice). Resumen: A 172 ms · B 187 ms · C 1.454 ms por refresco a volumen bajo; con 203k filas A
+sube a 648 ms (1,24 M de tuplas por refresco) mientras B y C no se mueven; el índice baja A a 506 ms
+y 252k tuplas. Las filas de prueba se borraron y el lab volvió a 5.569 filas.
+
 ## Pendiente
 
 - Puntos de notificación de alertas (no hay a quién avisar desde el nodo).
