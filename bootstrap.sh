@@ -66,6 +66,7 @@ EOF
   ok ".env creado con 8 claves aleatorias (640)"
 fi
 grep -q '^INFLUX_TOKEN=' .env || { echo "INFLUX_TOKEN=$(openssl rand -hex 32)" >> .env; ok "añadido INFLUX_TOKEN (faltaba)"; }
+grep -q '^AIRFLOW_API_PASSWORD=' .env || { echo "AIRFLOW_API_PASSWORD=$(openssl rand -hex 12)" >> .env; ok "añadido AIRFLOW_API_PASSWORD (faltaba)"; }
 
 # --- 3 · levantar ------------------------------------------------------------
 paso "3/8 Levantando servicios"
@@ -98,6 +99,28 @@ if docker exec -i airflow-lab-pg psql -U airflow -d airflow -v ro_pass="$ROPASS"
   [ "${tablas:-0}" -ge 6 ] && ok "rol grafana_ro con SELECT sobre $tablas tablas" || mal "el rol no tiene los permisos esperados"
 else
   mal "no se pudo crear el rol (ver /tmp/bootstrap-rol.log)"
+fi
+
+# --- 5b · opción C: usuario Viewer + datasource de la API -------------------
+paso "5b/8 Opción C · usuario de API y datasource"
+APIPASS=$(grep '^AIRFLOW_API_PASSWORD=' .env | cut -d= -f2)
+if docker exec airflow-lab-webserver bash -lc \
+     "airflow users create --username grafana_api --password '$APIPASS' \
+      --firstname Grafana --lastname API --role Viewer --email grafana-api@lab.local" >/dev/null 2>&1; then
+  ok "usuario grafana_api (rol Viewer) creado"
+else
+  info "usuario grafana_api ya existía"
+fi
+if [ -f grafana/provisioning/datasources/airflow-api.yaml.example ]; then
+  python3 - "$PWD" <<'PY'
+import base64, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+env = dict(l.split("=", 1) for l in (root / ".env").read_text().splitlines() if "=" in l and not l.startswith("#"))
+b64 = base64.b64encode(f"grafana_api:{env['AIRFLOW_API_PASSWORD']}".encode()).decode()
+tpl = (root / "grafana/provisioning/datasources/airflow-api.yaml.example").read_text()
+(root / "grafana/provisioning/datasources/airflow-api.yaml").write_text(tpl.replace("__BASIC_B64__", b64))
+PY
+  ok "datasource de la API generado desde .env (no está en el repo)"
 fi
 
 # --- 6 · DAGs parseados y despausados ---------------------------------------
@@ -138,12 +161,18 @@ if python3 scripts/verify_historico.py >/tmp/bootstrap-vB.log 2>&1; then
 else
   mal "vía B con errores (ver /tmp/bootstrap-vB.log)"; grep -E '\[FAIL\]|\[VACÍO\]' /tmp/bootstrap-vB.log | head -3
 fi
+if curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:$PUERTO_GRAFANA/api/dashboards/uid/airflow-api | grep -q 200; then
+  ok "vía C · dashboard de la API REST provisionado"
+else
+  info "vía C no disponible (plugin Infinity o datasource sin generar)"
+fi
 
 # --- resumen -----------------------------------------------------------------
 IP=$(hostname -I | awk '{print $1}')
 printf '\n\033[1m%s\033[0m\n' "──────────────────────────────────────────────────────────"
 printf '  Vía A · en vivo    http://%s:%s/d/airflow-visibilidad\n' "$IP" "$PUERTO_GRAFANA"
 printf '  Vía B · histórico  http://%s:%s/d/airflow-historico\n' "$IP" "$PUERTO_GRAFANA"
+printf '  Vía C · API REST   http://%s:%s/d/airflow-api\n' "$IP" "$PUERTO_GRAFANA"
 printf '  Airflow            http://%s:%s\n' "$IP" "$PUERTO_AIRFLOW"
 printf '  Alertas recibidas  http://%s:%s\n' "$IP" "$PUERTO_WEBHOOK"
 printf '  Credenciales       .env (640) — usuario admin de Grafana y de Airflow\n'

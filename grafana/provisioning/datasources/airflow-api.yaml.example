@@ -1,0 +1,28 @@
+# OPCIÓN C · datasource contra la API REST de Airflow (plugin Infinity).
+#
+# Este fichero es una PLANTILLA: bootstrap.sh genera `airflow-api.yaml` a partir
+# de .env (el header Authorization en base64). El .yaml real está en .gitignore
+# porque contiene una credencial.
+#
+# Por qué un header explícito y no el basicAuth del plugin: con Infinity v4 el
+# basicAuth no llegó a enviar la credencial contra esta API (401 con la misma
+# que curl autentica bien), y además `$__env{}` NO se interpola dentro de
+# secureJsonData, así que el valor se escribe ya calculado.
+#
+# La credencial es de un usuario con rol Viewer: puede LEER y NO puede disparar
+# DAGs (verificado: 403 al intentarlo).
+apiVersion: 1
+
+datasources:
+  - name: Airflow API
+    uid: airflow-api
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: http://airflow-webserver:8080/api/v1
+    editable: false
+    jsonData:
+      auth_method: none
+      httpHeaderName1: Authorization
+      cacheDurationSeconds: 0
+    secureJsonData:
+      httpHeaderValue1: "Basic __BASIC_B64__"

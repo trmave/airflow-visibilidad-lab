@@ -128,9 +128,61 @@ y el ranking habría que resolverlos de otra forma (o con la opción B en parale
 se ofrece C con el alcance recortado (5 paneles) y se le explica qué se pierde. Si además quiere el
 tablero completo, entonces la conversación correcta es A con una réplica de lectura o B.
 
-## Estado en el laboratorio
+## Implementado en el laboratorio: el tercer dashboard
 
-Para probar todo esto se habilitó `basic_auth` en el Airflow del laboratorio
-(`AIRFLOW__API__AUTH_BACKENDS`, en `compose.yaml`). Es la única diferencia con el montaje original y
-está comentada en el propio fichero. Si quieres volver al estado inicial, se quita esa línea y se
-recrea el webserver.
+Sí se montó, y funciona: **`/d/airflow-api`** (8 paneles), leyendo solo de la API con el plugin
+Infinity y el usuario `grafana_api` (rol `Viewer`).
+
+![Vía C · dashboard desde la API REST](img/dashboard-api.png)
+
+Verificación automática (`scripts/verify_api.py`), con los valores de ese momento:
+
+```text
+DASHBOARD  airflow-api · 8 paneles · Airflow 2.8.1 · Vía C (API REST)
+[ OK ]  1 DAGs en total                          filas=1 cols=['n'] [46]
+[ OK ]  2 OK (ventana)                           filas=1 cols=['n'] [974]
+[ OK ]  3 Fallidos (ventana)                     filas=1 cols=['n'] [245]
+[ OK ]  4 Corriendo ahora                        filas=1 cols=['n'] [1]
+[ OK ]  5 Corriendo > 1 h                        filas=1 cols=['n'] [0]
+[ OK ]  6 Corriendo ahora (detalle por API)      filas=1 ['demo_04_cola_saturada', '2026-10-24T22:01:24']
+[ OK ]  7 Fallidos recientes (detalle por API)   filas=50 ['demo_bulk_12_stock', '2026-10-24T21:45:00']
+RESULTADO: 8 paneles, 0 con problema
+```
+
+### Las cinco trampas que costó encontrar (para no repetirlas)
+
+1. **`parser: "backend"`.** Sin eso, Infinity devuelve frames vacíos aunque la llamada sea 200.
+2. **Escalares sin `root_selector`**: con `parser: backend` y una columna
+   `{"selector": "total_entries", "type": "number"}` sale el número. Con `root_selector` puesto,
+   devuelve vacío.
+3. **Arrays con `root_selector`**: para `/dagRuns` hay que poner `root_selector: "dag_runs"`
+   (la clave del JSON), o las columnas llegan a `null`.
+4. **`$__env{}` no se interpola dentro de `secureJsonData`.** El header de autorización se escribe
+   ya calculado por `bootstrap.sh` en `airflow-api.yaml`, y ese fichero está **en `.gitignore`**
+   porque contiene la credencial. En el repo queda la plantilla
+   `airflow-api.yaml.example` con el hueco `__BASIC_B64__`.
+5. **`basicAuth` nativo de Infinity v4 no envió la credencial** contra esta API (401 con la misma
+   contraseña que `curl` autentica bien). Se usa el header `Authorization` explícito, que sí
+   funciona.
+
+Dos que sí funcionaron a la primera y conviene saber:
+
+- **`${__from:date:iso}` se interpola** en los parámetros: sirve para `execution_date_gte`.
+- **`timeShift: "1h"`** en el panel hace que `${__to}` valga "ahora menos 1 hora": así se resuelve
+  "corriendo > 1 h" sin cálculos de fechas. Se ve como insignia en el propio panel.
+
+### Cómo se regenera
+
+```bash
+python3 scripts/generate_dashboard_api.py > grafana/dashboards/airflow-api.json
+GRAFANA_PASS=$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d= -f2) python3 scripts/verify_api.py
+```
+
+### Qué NO tiene este dashboard (y es a propósito)
+
+- **No hay serie temporal**: la API no agrega por intervalo. Sería una llamada por punto.
+- **No hay ranking por DAG**: serían 46 llamadas, una por `dag_id`.
+- **No sobrevive a la caída del clúster** (como la vía A): lee del webserver.
+
+Es decir: la vía C es una demostración honesta de que **los cinco números se pueden sacar sin
+credenciales de base de datos**, y de lo que cuesta el resto del tablero.

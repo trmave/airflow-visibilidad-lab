@@ -1,0 +1,666 @@
+{
+  "uid": "airflow-api",
+  "title": "Airflow 2.8.1 · Vía C (API REST)",
+  "description": "Los KPIs leídos de la API REST de Airflow con el plugin Infinity y un usuario con rol Viewer. Una llamada por panel, conteo en total_entries.",
+  "tags": [
+    "airflow",
+    "demo",
+    "opcion-c"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Vía A · metadata DB",
+      "url": "/d/airflow-visibilidad",
+      "type": "link",
+      "targetBlank": false,
+      "icon": "external link"
+    },
+    {
+      "title": "Vía B · InfluxDB",
+      "url": "/d/airflow-historico",
+      "type": "link",
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "DAGs en total",
+      "description": "Una llamada a /api/v1/dags con limit=1; el conteo viene en total_entries.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "total_entries",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "OK (ventana)",
+      "description": "GET /api/v1/dags/~/dagRuns?state=success&execution_date_gte=<desde>",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "success"
+              },
+              {
+                "key": "execution_date_gte",
+                "value": "${__from:date:iso}"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "total_entries",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Fallidos (ventana)",
+      "description": "Mismo endpoint con state=failed.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 9,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "failed"
+              },
+              {
+                "key": "execution_date_gte",
+                "value": "${__from:date:iso}"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "total_entries",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Corriendo ahora",
+      "description": "Estado instantáneo, sin filtro de fecha.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 14,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "running"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "total_entries",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Corriendo > 1 h",
+      "description": "El panel aplica timeShift=1h, así __to = ahora-1h y el filtro start_date_lte devuelve los que arrancaron antes de ese momento.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "running"
+              },
+              {
+                "key": "start_date_lte",
+                "value": "${__to:date:iso}"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "total_entries",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "timeShift": "1h"
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Corriendo ahora (detalle por API)",
+      "description": "La API sí da el detalle: una llamada y las filas que devuelve.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "running"
+              },
+              {
+                "key": "limit",
+                "value": "50"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "dag_id",
+              "text": "dag_id",
+              "type": "string"
+            },
+            {
+              "selector": "start_date",
+              "text": "inicio",
+              "type": "string"
+            }
+          ],
+          "root_selector": "dag_runs"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "count"
+          ],
+          "countRows": true,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Fallidos recientes (detalle por API)",
+      "description": "Máximo 100 filas por llamada: la API pagina.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "airflow-api"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/dags/~/dagRuns",
+          "parser": "backend",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "state",
+                "value": "failed"
+              },
+              {
+                "key": "execution_date_gte",
+                "value": "${__from:date:iso}"
+              },
+              {
+                "key": "limit",
+                "value": "50"
+              },
+              {
+                "key": "order_by",
+                "value": "-execution_date"
+              }
+            ]
+          },
+          "columns": [
+            {
+              "selector": "dag_id",
+              "text": "dag_id",
+              "type": "string"
+            },
+            {
+              "selector": "execution_date",
+              "text": "ejecución",
+              "type": "string"
+            }
+          ],
+          "root_selector": "dag_runs"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "count"
+          ],
+          "countRows": true,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "title": "Límites de esta vía (medidos, no supuestos)",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "airflow-api"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [],
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "\n### Qué resuelve esta vía\n\n- Los **cinco números** salen de la API con **una llamada por panel** (`limit=1` y `total_entries`).\n- No necesita **ninguna credencial de base de datos**: solo un usuario de Airflow con rol `Viewer`\n  (comprobado: puede leer, y devuelve **403** al intentar disparar un DAG).\n\n### Lo que no resuelve\n\n- **Serie temporal**: habría que hacer una llamada por cada punto del gráfico (24-48 por refresco).\n- **Ranking por DAG**: la API no agrupa; serían 46 llamadas o paginar los fallidos.\n- **Carga**: cada refresco golpea el **webserver** (Gunicorn), que es la pieza más frágil.\n- **Requisito previo**: Airflow 2.8.1 solo acepta cookie de sesión por defecto; hubo que\n  habilitar `basic_auth` y **reiniciar el webserver**.\n"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "transforms": [],
+      "description": "Lo que la API resuelve y lo que no."
+    }
+  ]
+}

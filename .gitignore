@@ -11,3 +11,6 @@ grafanadata/
 __pycache__/
 *.pyc
 .DS_Store
+
+# datasource de la opción C: se genera desde .env (contiene una credencial)
+grafana/provisioning/datasources/airflow-api.yaml

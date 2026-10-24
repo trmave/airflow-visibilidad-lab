@@ -20,13 +20,19 @@ tienen respuesta en el Airflow del cliente:
 > Los números son los que devolvió Grafana al ejecutar los 12 paneles contra la metadata DB
 > real de un Airflow 2.8.1 recién levantado. Reproducibles con `scripts/verify_dashboard.py`.
 
-## Dos tableros, dos vías
+## Tres tableros, tres vías
 
-| | **Vía A · en vivo** | **Vía B · histórico** |
-|---|---|---|
-| URL | <http://192.168.3.39:3050/d/airflow-visibilidad> | <http://192.168.3.39:3050/d/airflow-historico> |
-| Fuente | metadata DB de Airflow | **InfluxDB** (colector cada 30 s) |
-| Si cae el clúster | paneles en error | **sigue dibujando** |
+| | **Vía A · en vivo** | **Vía B · histórico** | **Vía C · API REST** |
+|---|---|---|---|
+| URL | [/d/airflow-visibilidad](http://192.168.3.39:3050/d/airflow-visibilidad) | [/d/airflow-historico](http://192.168.3.39:3050/d/airflow-historico) | [/d/airflow-api](http://192.168.3.39:3050/d/airflow-api) |
+| Fuente | metadata DB de Airflow | **InfluxDB** (colector cada 30 s) | **API REST** `/api/v1` (plugin Infinity) |
+| Credencial | rol SQL `SELECT` | token de Influx | usuario Airflow rol `Viewer` |
+| Si cae el clúster | paneles en error | **sigue dibujando** | paneles en error |
+| Alcance | completo (12 paneles) | completo (11) | solo conteos + detalle (8) |
+
+La vía C existe para demostrar que los cinco números se pueden sacar **sin credenciales de base de
+datos**; paga el precio en serie temporal y ranking (ver
+[`docs/13-opcion-api-rest.md`](docs/13-opcion-api-rest.md)).
 
 La vía B existe para demostrar la externalización: parando Postgres, la vía A se queda en
 "No data" y la vía B sigue mostrando el histórico. Prueba hecha y documentada en
@@ -156,6 +162,8 @@ RESULTADO: 12 paneles verificados, 0 con error
 │   ├── generate_dashboard.py        # genera el JSON del dashboard (SQL versionado)
 │   ├── generate_dashboard_historico.py  # genera el dashboard de la vía B (Flux)
 │   ├── verify_historico.py          # verifica los paneles de la vía B
+│   ├── generate_dashboard_api.py    # genera el dashboard de la vía C (API REST)
+│   ├── verify_api.py                # verifica los paneles de la vía C
 │   ├── generate_demo_dags.py        # genera los 40 DAGs de volumen
 │   └── verify_dashboard.py          # ejecuta cada panel contra Grafana y valida
 └── docs/                            # documentación y plan para el cliente
@@ -192,7 +200,7 @@ bash cliente/f0-descubrimiento.sh | tee f0-informe.md
 | [`docs/10-alertas-notificacion.md`](docs/10-alertas-notificacion.md) | Cadena de alertas completa: regla → contacto → aviso, con la prueba hecha |
 | [`docs/11-rehacer-desde-cero.md`](docs/11-rehacer-desde-cero.md) | **Reconstruir el laboratorio desde un host limpio en un comando** |
 | [`docs/12-propuesta.md`](docs/12-propuesta.md) | **Propuesta para presentar**: las dos opciones comparadas, recomendación y guion de demo |
-| [`docs/13-opcion-api-rest.md`](docs/13-opcion-api-rest.md) | Tercera opción (API REST de Airflow): medida real y por qué no entra en el MVP |
+| [`docs/13-opcion-api-rest.md`](docs/13-opcion-api-rest.md) | Tercera opción (API REST de Airflow): montada, medida y con sus límites |
 | [`docs/presentacion-dos-opciones.pptx`](docs/presentacion-dos-opciones.pptx) | Deck de 10 diapositivas para enseñar las dos opciones |
 | [`PLAN.md`](PLAN.md) | Estado, umbrales y decisiones del nodo (uso interno) |
 

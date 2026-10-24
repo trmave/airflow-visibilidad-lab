@@ -135,8 +135,10 @@ services:
       # Contraseña del rol read-only que Grafana usa contra la metadata DB.
       # La consume el provisioning con $__env{AIRFLOW_RO_PASSWORD}.
       AIRFLOW_RO_PASSWORD: ${GRAFANA_RO_PASSWORD}
+      # Opción C: credencial del usuario Viewer de Airflow para la API REST.
+      AIRFLOW_API_PASSWORD: ${AIRFLOW_API_PASSWORD}
       # Renderizado de paneles a PNG (capturas para documentación y PDFs).
-      GF_INSTALL_PLUGINS: grafana-image-renderer
+      GF_INSTALL_PLUGINS: grafana-image-renderer,yesoreyeram-infinity-datasource
       GF_RENDERING_SERVER_URL: http://grafana-renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_RENDERING_RENDERER_TOKEN: ${RENDERER_TOKEN}

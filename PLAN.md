@@ -82,6 +82,14 @@ Sin datos fríos: todo es NVMe (4.338 filas, 3,5 GB de imágenes). El laboratori
 y la vía B sigue dibujando. Detalle en `docs/09-fase2-implementada.md`.
 **En el cliente sigue siendo fase aparte (CronJob + Secret), no MVP.**
 
+## Vía C montada (solo demo)
+
+Tercer dashboard (`airflow-api`) que lee de la **API REST** de Airflow con el plugin Infinity y un
+usuario `Viewer` (`grafana_api`). Requiere `basic_auth` habilitado en el webserver (una línea en
+`compose.yaml`) y el datasource `airflow-api.yaml`, que **se genera desde `.env`** en
+`bootstrap.sh` y está en `.gitignore`. Límites: sin serie temporal ni ranking por DAG; la carga va
+al webserver. Detalle y trampas: `docs/13-opcion-api-rest.md`.
+
 ## Pendiente
 
 - Puntos de notificación de alertas (no hay a quién avisar desde el nodo).
