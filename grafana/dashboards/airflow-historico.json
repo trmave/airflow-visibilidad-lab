@@ -35,22 +35,23 @@
   ],
   "panels": [
     {
-      "id": 1,
+      "id": 90,
       "type": "text",
       "title": "Cómo leer este tablero",
+      "description": "Contexto de la vía y sus límites, medidos.",
       "datasource": {
         "type": "influxdb",
         "uid": "influx-airflow"
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "\n**Este tablero NO lee la metadata DB de Airflow: lee InfluxDB.**\n\n- Un colector dentro del clúster lee los KPIs cada 30 s y los escribe aquí.\n- Si el clúster cae, **este tablero sigue mostrando el histórico y la última foto**.\n- Lo que no puede hacer: mostrar lo que pasa *mientras* el colector está caído.\n  Para eso está la alerta de latido y el tablero en vivo (vía A).\n",
+        "content": "\n**Fuente: InfluxDB**, fuera del clúster, escrita por el colector cada 30 s leyendo la metadata DB.\n\n- **Sobrevive a la caída del clúster** y conserva historia propia (retención de Influx, no de Airflow).\n- **Va 30-60 s por detrás** de las otras dos: si un DAG acaba de terminar, aquí todavía no se ve.\n  No es un error, es el precio de muestrear.\n- **Si el colector se cae**, este tablero sigue mostrando la última foto: por eso existe la alerta\n  de latido (`collector_last_success`).\n- **No le afecta el volumen** de `dag_run` (lee sus propias muestras): +13 % al pasar de 5.500 a\n  203.000 filas, frente al ×3,8 de la vía A.\n- Otras vías: [A · metadata DB](/d/airflow-visibilidad) en vivo ·\n  [C · API REST](/d/airflow-api) sin credenciales de base.\n",
         "code": {
           "language": "plaintext",
           "showLineNumbers": false,
@@ -76,7 +77,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 5
+        "y": 6
       },
       "targets": [
         {
@@ -134,7 +135,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 5
+        "y": 6
       },
       "targets": [
         {
@@ -192,7 +193,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 5
+        "y": 6
       },
       "targets": [
         {
@@ -254,7 +255,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 5
+        "y": 6
       },
       "targets": [
         {
@@ -320,7 +321,7 @@
         "h": 9,
         "w": 14,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "targets": [
         {
@@ -378,7 +379,7 @@
         "h": 9,
         "w": 10,
         "x": 14,
-        "y": 10
+        "y": 11
       },
       "targets": [
         {
@@ -436,7 +437,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -503,7 +504,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -569,7 +570,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 28
       },
       "targets": [
         {
@@ -621,7 +622,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 28
       },
       "options": {
         "mode": "markdown",

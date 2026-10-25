@@ -96,6 +96,23 @@ def cpu_us(contenedor: str) -> int | None:
     return None
 
 
+def cpu_en_reposo(contenedor: str, segundos: float = 10.0) -> float | None:
+    """CPU que consume el contenedor SIN tráfico del benchmark, en ms/s.
+
+    Sin esto, el CPU atribuido a un refresco incluye lo que el contenedor ya
+    estaba haciendo (el scheduler de Airflow, el colector, Influx compactando…),
+    y la comparación entre vías se vuelve injusta.
+    """
+    a = cpu_us(contenedor)
+    if a is None:
+        return None
+    time.sleep(segundos)
+    b = cpu_us(contenedor)
+    if b is None or b <= a:
+        return None
+    return (b - a) / 1000.0 / segundos          # ms de CPU por segundo en reposo
+
+
 def pg_stats() -> dict:
     salida = subprocess.run(
         ["docker", "exec", "airflow-lab-pg", "psql", "-U", "airflow", "-d", "airflow", "-tAc",
@@ -113,7 +130,9 @@ def medir(via: str, uid: str, repeticiones: int) -> dict:
     por_panel = {}
 
     cont = CONTENEDORES[via]
+    reposo = cpu_en_reposo(cont, 10)
     cpu0 = cpu_us(cont)
+    t_inicio = time.perf_counter()
     pg0 = pg_stats() if via == "A" else None
 
     for _ in range(repeticiones):
@@ -131,6 +150,7 @@ def medir(via: str, uid: str, repeticiones: int) -> dict:
             bytes_total += nbytes
             por_panel.setdefault(p["title"], []).append(dt * 1000)
 
+    t_fin = time.perf_counter()
     cpu1 = cpu_us(cont)
     pg1 = pg_stats() if via == "A" else None
 
@@ -151,6 +171,12 @@ def medir(via: str, uid: str, repeticiones: int) -> dict:
         "bytes_por_refresco": round(bytes_total / repeticiones),
         "cpu_ms_por_refresco": (round((cpu1 - cpu0) / 1000 / repeticiones, 1)
                                 if cpu0 and cpu1 and cpu1 > cpu0 else None),
+        # CPU del contenedor menos lo que ya consumía en reposo: lo atribuible
+        # de verdad a la carga del tablero.
+        "cpu_reposo_ms_por_s": (round(reposo, 1) if reposo is not None else None),
+        "cpu_neto_ms_por_refresco": (
+            round((((cpu1 - cpu0) / 1000.0) - (reposo * (t_fin - t_inicio))) / repeticiones, 1)
+            if (reposo is not None and cpu0 and cpu1 and cpu1 > cpu0) else None),
         "panel_mas_lento_ms": round(max((statistics.mean(v) for v in por_panel.values())), 1),
         "detalle_paneles": {k: round(statistics.mean(v), 1) for k, v in por_panel.items()},
     }
@@ -194,7 +220,8 @@ def main() -> int:
         print(f"--- Vía {via} ({uid}) · {r['paneles']} paneles")
         print(f"    panel p50: {r['latencia_panel_ms']['p50']} ms · máx: {r['latencia_panel_ms']['max']} ms")
         print(f"    refresco completo: {r['refresco_completo_ms']} ms · {r['bytes_por_refresco']} bytes")
-        print(f"    CPU del origen: {r['cpu_ms_por_refresco']} ms por refresco")
+        print(f"    CPU del origen: {r['cpu_ms_por_refresco']} ms por refresco "
+              f"(en reposo: {r['cpu_reposo_ms_por_s']} ms/s · neto: {r['cpu_neto_ms_por_refresco']} ms)")
         if "postgres_por_refresco" in r:
             print(f"    Postgres: {r['postgres_por_refresco']}")
         if r["errores"]:

@@ -160,14 +160,25 @@ dashboard["panels"][-1]["options"]["content"] = """
 - Los **cinco números** salen de la API con **una llamada por panel** (`limit=1` y `total_entries`).
 - No necesita **ninguna credencial de base de datos**: solo un usuario de Airflow con rol `Viewer`
   (comprobado: puede leer, y devuelve **403** al intentar disparar un DAG).
+- **Coincide exactamente con la vía A** (misma fuente de verdad): diferencia medida 0 en los cinco KPIs.
+
+### Lo que cuesta (medido, no estimado)
+
+- **1,5 s por refresco completo**: 8 veces más lento que la vía A (172 ms) con el mismo volumen.
+- **~30 veces más CPU** en el componente que golpea (el webserver), porque cada panel es una
+  petición HTTP autenticada que a su vez consulta la base: se paga dos veces el mismo trabajo.
+- **Carga**: cada refresco golpea el **webserver** (Gunicorn), la pieza más frágil del stack.
+- **Requisito previo**: Airflow 2.8.1 solo acepta cookie de sesión por defecto; hubo que habilitar
+  `basic_auth` y **reiniciar el webserver**.
 
 ### Lo que no resuelve
 
 - **Serie temporal**: habría que hacer una llamada por cada punto del gráfico (24-48 por refresco).
 - **Ranking por DAG**: la API no agrupa; serían 46 llamadas o paginar los fallidos.
-- **Carga**: cada refresco golpea el **webserver** (Gunicorn), que es la pieza más frágil.
-- **Requisito previo**: Airflow 2.8.1 solo acepta cookie de sesión por defecto; hubo que
-  habilitar `basic_auth` y **reiniciar el webserver**.
+- **No sobrevive a la caída del clúster** (como la vía A).
+
+Otras vías: [A · metadata DB](/d/airflow-visibilidad) · [B · InfluxDB](/d/airflow-historico).
+Método y números completos: `docs/14-benchmark.md`.
 """
 
 json.dump(dashboard, sys.stdout, indent=2, ensure_ascii=False)

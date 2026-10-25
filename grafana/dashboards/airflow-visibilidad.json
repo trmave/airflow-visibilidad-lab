@@ -59,6 +59,36 @@
   ],
   "panels": [
     {
+      "id": 90,
+      "type": "text",
+      "title": "Cómo leer este tablero",
+      "description": "Contexto de la vía y sus límites, medidos.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "airflow-pg"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "\n**Fuente: la metadata DB de Airflow (PostgreSQL), en solo lectura.** Se refresca cada 30 s.\n\n- **La más rápida y exacta**: ~172 ms para el refresco completo con 5.500 filas; los números son\n  los de Airflow al milisegundo.\n- **No sobrevive a la caída del clúster**: si la base cae, los paneles pasan a *Error* a propósito,\n  en vez de mostrar datos viejos como si fueran actuales.\n- **Coincide con la vía C** (misma fuente de verdad): diferencia esperada 0 o ±1. Con la vía B,\n  ±1 y hasta 60 s de retraso, porque muestrea cada 30 s.\n- Otras vías: [B · InfluxDB](/d/airflow-historico) sobrevive a la caída ·\n  [C · API REST](/d/airflow-api) no necesita credenciales de base de datos.\n",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        }
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
       "id": 1,
       "type": "stat",
       "title": "DAGs activos",
@@ -71,7 +101,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 0
+        "y": 5
       },
       "targets": [
         {
@@ -130,7 +160,7 @@
         "h": 5,
         "w": 5,
         "x": 6,
-        "y": 0
+        "y": 5
       },
       "targets": [
         {
@@ -189,7 +219,7 @@
         "h": 5,
         "w": 4,
         "x": 11,
-        "y": 0
+        "y": 5
       },
       "targets": [
         {
@@ -252,7 +282,7 @@
         "h": 5,
         "w": 5,
         "x": 15,
-        "y": 0
+        "y": 5
       },
       "targets": [
         {
@@ -319,7 +349,7 @@
         "h": 5,
         "w": 4,
         "x": 20,
-        "y": 0
+        "y": 5
       },
       "targets": [
         {
@@ -386,7 +416,7 @@
         "h": 9,
         "w": 14,
         "x": 0,
-        "y": 5
+        "y": 10
       },
       "targets": [
         {
@@ -453,7 +483,7 @@
         "h": 9,
         "w": 10,
         "x": 14,
-        "y": 5
+        "y": 10
       },
       "targets": [
         {
@@ -526,7 +556,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 19
       },
       "targets": [
         {
@@ -580,7 +610,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 19
       },
       "targets": [
         {
@@ -634,7 +664,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 27
       },
       "targets": [
         {
@@ -688,7 +718,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 22
+        "y": 27
       },
       "targets": [
         {
@@ -751,7 +781,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 22
+        "y": 27
       },
       "targets": [
         {

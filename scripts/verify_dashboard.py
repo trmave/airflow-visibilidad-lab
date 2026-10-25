@@ -78,6 +78,9 @@ def main() -> int:
     errors = 0
     print("=" * 78)
     for p in panels:
+        if p.get("type") == "text" or not p.get("targets"):
+            print(f"[skip] {p['id']:>2} {p['title']} (sin consulta)")
+            continue
         sql = resolve(p["targets"][0]["rawSql"], args.ventana, hours)
         payload = {
             "queries": [{

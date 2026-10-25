@@ -137,14 +137,7 @@ def texto(pid, title, contenido, grid):
 
 
 panels = [
-    texto(1, "Cómo leer este tablero", """
-**Este tablero NO lee la metadata DB de Airflow: lee InfluxDB.**
 
-- Un colector dentro del clúster lee los KPIs cada 30 s y los escribe aquí.
-- Si el clúster cae, **este tablero sigue mostrando el histórico y la última foto**.
-- Lo que no puede hacer: mostrar lo que pasa *mientras* el colector está caído.
-  Para eso está la alerta de latido y el tablero en vivo (vía A).
-""", {"h": 5, "w": 24, "x": 0, "y": 0}),
 
     stat(2, "DAGs activos", "dags_active", {"h": 5, "w": 6, "x": 0, "y": 5},
          desc="Última muestra del colector."),
@@ -180,6 +173,40 @@ panels = [
 La prueba: parar Postgres. El tablero A se pone en rojo; este sigue dibujando.
 """, {"h": 6, "w": 12, "x": 12, "y": 27}),
 ]
+
+NOTA = """
+**Fuente: InfluxDB**, fuera del clúster, escrita por el colector cada 30 s leyendo la metadata DB.
+
+- **Sobrevive a la caída del clúster** y conserva historia propia (retención de Influx, no de Airflow).
+- **Va 30-60 s por detrás** de las otras dos: si un DAG acaba de terminar, aquí todavía no se ve.
+  No es un error, es el precio de muestrear.
+- **Si el colector se cae**, este tablero sigue mostrando la última foto: por eso existe la alerta
+  de latido (`collector_last_success`).
+- **No le afecta el volumen** de `dag_run` (lee sus propias muestras): +13 % al pasar de 5.500 a
+  203.000 filas, frente al ×3,8 de la vía A.
+- Otras vías: [A · metadata DB](/d/airflow-visibilidad) en vivo ·
+  [C · API REST](/d/airflow-api) sin credenciales de base.
+"""
+
+
+def con_nota(panels, alto=6):
+    nota = {
+        "id": 90, "type": "text", "title": "Cómo leer este tablero",
+        "description": "Contexto de la vía y sus límites, medidos.",
+        "datasource": DS, "gridPos": {"h": alto, "w": 24, "x": 0, "y": 0},
+        "options": {"mode": "markdown", "content": NOTA,
+                    "code": {"language": "plaintext", "showLineNumbers": False,
+                             "showMiniMap": False}},
+        "targets": [], "fieldConfig": {"defaults": {}, "overrides": []},
+    }
+    # Re-basar: el primer panel debe empezar justo debajo de la nota.
+    ymin = min(p["gridPos"]["y"] for p in panels)
+    for p in panels:
+        p["gridPos"]["y"] = p["gridPos"]["y"] - ymin + alto
+    return [nota] + panels
+
+
+panels = con_nota(panels)
 
 dashboard = {
     "uid": "airflow-historico",

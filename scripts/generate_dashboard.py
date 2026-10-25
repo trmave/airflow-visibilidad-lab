@@ -330,6 +330,44 @@ WHERE execution_date > now() - interval '24 hours'
          desc="Volumen total de ejecuciones del último día."),
 ]
 
+# ---------------------------------------------------------------------------
+# Nota de cabecera: qué es esta vía, qué límites tiene y cómo se compara.
+# Va en el propio tablero porque es lo primero que pregunta quien lo ve.
+# ---------------------------------------------------------------------------
+NOTA = """
+**Fuente: la metadata DB de Airflow (PostgreSQL), en solo lectura.** Se refresca cada 30 s.
+
+- **La más rápida y exacta**: ~172 ms para el refresco completo con 5.500 filas; los números son
+  los de Airflow al milisegundo.
+- **No sobrevive a la caída del clúster**: si la base cae, los paneles pasan a *Error* a propósito,
+  en vez de mostrar datos viejos como si fueran actuales.
+- **Coincide con la vía C** (misma fuente de verdad): diferencia esperada 0 o ±1. Con la vía B,
+  ±1 y hasta 60 s de retraso, porque muestrea cada 30 s.
+- Otras vías: [B · InfluxDB](/d/airflow-historico) sobrevive a la caída ·
+  [C · API REST](/d/airflow-api) no necesita credenciales de base de datos.
+"""
+
+
+def con_nota(panels, alto=5):
+    """Antepone la nota y baja el resto de paneles para no solaparlos."""
+    nota = {
+        "id": 90, "type": "text", "title": "Cómo leer este tablero",
+        "description": "Contexto de la vía y sus límites, medidos.",
+        "datasource": DS, "gridPos": {"h": alto, "w": 24, "x": 0, "y": 0},
+        "options": {"mode": "markdown", "content": NOTA,
+                    "code": {"language": "plaintext", "showLineNumbers": False,
+                             "showMiniMap": False}},
+        "targets": [], "fieldConfig": {"defaults": {}, "overrides": []},
+    }
+    # Re-basar: el primer panel debe empezar justo debajo de la nota.
+    ymin = min(p["gridPos"]["y"] for p in panels)
+    for p in panels:
+        p["gridPos"]["y"] = p["gridPos"]["y"] - ymin + alto
+    return [nota] + panels
+
+
+panels = con_nota(panels)
+
 dashboard = {
     "uid": "airflow-visibilidad",
     "title": "Airflow 2.8.1 · Visibilidad de DAGs",

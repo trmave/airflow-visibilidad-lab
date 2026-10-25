@@ -29,9 +29,10 @@ que sí es solo de las consultas.
 | CPU del origen por refresco | 43,5 ms | 75,4 ms | 1.283,6 ms |
 | Errores | 0 | 0 | 0 |
 
-**Lectura:** con volumen pequeño, A y B empatan (170-190 ms por refresco). **C es 8 veces más
-lenta** que A y consume 30 veces más CPU, porque cada panel es una petición HTTP autenticada al
-webserver (Gunicorn) que a su vez consulta la base: se paga dos veces el mismo trabajo.
+**Lectura:** con volumen pequeño, A y B empatan (170-190 ms por refresco). **C tarda 8,5 veces más**
+que A (1.481 ms frente a 175 ms) porque cada panel es una petición HTTP autenticada al webserver
+(Gunicorn) que a su vez consulta la base: se paga dos veces el mismo trabajo. El coste en CPU y cómo
+se calcula, en la sección [«De dónde salen el 8× y el 30×»](#de-dónde-salen-el-8-y-el-30-y-por-qué-el-30-es-el-número-débil).
 
 ## Resultado 2 · volumen alto (203.367 filas, 88 MB)
 
@@ -99,6 +100,68 @@ WHERE execution_date > now() - interval '7 days'
 Y una regla que sale de los números, no de la teoría: **el refresco de 1,5 s de C es aceptable para
 un panel de operaciones, pero no para un dashboard de pared** (que refresca cada 30 s con 10
 personas mirando). A y B sí aguantan ese uso.
+
+## De dónde salen el "8×" y el "30×" (y por qué el 30 es el número débil)
+
+Las dos afirmaciones que se repiten en la presentación salen de la **misma tabla del Resultado 1**,
+dividiendo. Nada más:
+
+```text
+refresco completo, volumen actual (5.567 filas)
+  A · metadata DB ....  172,3 ms
+  B · InfluxDB .......  187,3 ms
+  C · API REST ....... 1453,7 ms      ← 1453,7 / 172,3 = 8,44  →  "8 veces más lento"
+
+CPU del contenedor por refresco
+  A · postgres .......   43,5 ms
+  B · influx .........   75,4 ms
+  C · webserver ...... 1283,6 ms      ← 1283,6 / 43,5 = 29,5  →  "30 veces más CPU"
+```
+
+### Cómo se mide cada cosa
+
+1. **Latencia.** Para cada panel del dashboard se hace `POST /api/ds/query` a Grafana y se mide el
+   tiempo de pared con `time.perf_counter()` alrededor de la llamada. Se repite 4 veces por panel y
+   se toma la mediana (p50). El "refresco completo" es **la suma de la media de cada panel**: una
+   pasada por todos los paneles, que es lo que hace el navegador cada 30 s.
+2. **CPU.** Se lee `usage_usec` del `cpu.stat` del cgroup de cada contenedor antes y después de la
+   tanda, se divide por el número de refrescos y se expresa en milisegundos de CPU por refresco.
+3. **Aislamiento.** Todo corre en el mismo nodo y el mismo minuto; lo único que cambia entre vías es
+   el componente que se mide (postgres / influx / webserver).
+
+### El 30× es el número que hay que matizar (y ahora está corregido)
+
+La CPU del contenedor **incluye lo que el contenedor ya estaba haciendo**: el scheduler de Airflow
+en `airflow-lab-pg`, el colector en `airflow-lab-influx`, y Gunicorn atendiendo la UI en el
+webserver. Por eso el script ahora mide también **la CPU en reposo** (10 s sin tráfico del
+benchmark) y la **descuenta**:
+
+```text
+cpu_neto = (cpu_durante_la_tanda − (reposo_por_segundo × segundos_de_la_tanda)) / refrescos
+```
+
+Con el descuento aplicado (última pasada, mismos 5.567 filas):
+
+| Vía | CPU cruda por refresco | CPU en reposo del contenedor | **CPU neta por refresco** |
+|---|---|---|---|
+| A · postgres | 33,6 ms | **90,3 ms/s** (el scheduler de Airflow no para) | **16,6 ms** |
+| B · influx | 73,4 ms | 4,7 ms/s | **72,6 ms** |
+| C · webserver | 1.320,5 ms | 3,1 ms/s | **1.315,9 ms** |
+
+Y los ratios, según cómo se mire:
+
+```text
+latencia .......... 1481,5 / 174,6 = 8,5×   →  "8 veces más lento"   (sólido: se mide de fuera)
+CPU cruda ......... 1320,5 /  33,6 = 39,3×  →  "30×" era conservador
+CPU neta .......... 1315,9 /  16,6 = 79,3×  →  el coste real es aún mayor
+```
+
+Conclusión honesta: **el 8× de latencia es la cifra que se defiende**, porque se mide de fuera y no
+depende de la carga de fondo del contenedor. El multiplicador de CPU **cambia según el método**
+(39× crudo, 79× neto) y por eso no debe ser el titular: se cita como color, con la explicación de
+que el contenedor de Postgres ya venía gastando 90 ms/s por el scheduler de Airflow.
+
+La CPU se cita como color, no como titular.
 
 ## Consistencia entre las tres vías (¿dan los mismos números?)
 
