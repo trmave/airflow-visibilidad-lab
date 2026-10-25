@@ -100,6 +100,36 @@ Y una regla que sale de los números, no de la teoría: **el refresco de 1,5 s d
 un panel de operaciones, pero no para un dashboard de pared** (que refresca cada 30 s con 10
 personas mirando). A y B sí aguantan ese uso.
 
+## Consistencia entre las tres vías (¿dan los mismos números?)
+
+Sí, y se puede comprobar en el mismo instante con
+[`scripts/compare_vias.py`](../scripts/compare_vias.py):
+
+```text
+# Comparación de las tres vías · 2026-10-25 01:28:35 UTC
+# ventana: 24 hours (vía A usa la variable; B y C, 24 h fijas)
+
+KPI             A · DB    B · InfluxDB   C · API      A−C   A−B
+dags                46              46        46        0     0
+ok                1079            1079      1079        0     0
+fallidos           293             293       293        0     0
+running              1               1         1        0     0
+lentos               0               0         0        0     0
+```
+
+Cero diferencia. Ahora las cuatro razones **legítimas** por las que pueden no coincidir:
+
+| Cuándo | Qué pasa | ¿Es un problema? |
+|---|---|---|
+| Un DAG cambia de estado justo entre dos lecturas | ±1 unidad en un panel | No: las tres se leen en milisegundos distintos |
+| La vía B no ha escrito todavía | B va **30-60 s por detrás** (muestrea) | No, pero hay que saberlo antes de discutir cifras delante de un cliente |
+| Alguien cambia la ventana en A (7 días, 1 h) | A mide otra cosa; B y C siguen en 24 h | No es un bug: están midiendo ventanas distintas |
+| Se cae el colector de la vía B | B muestra el último valor **congelado** | Sí, y por eso existe la alerta de latido; A y C en ese caso fallan a la vista |
+
+**Regla de oro para la demo:** A y C comparten la misma fuente de verdad (la metadata DB), así que
+su diferencia debe ser **0 o ±1**, siempre. Si difieren más, hay un panel mal filtrado. Con B solo
+hay que dejar pasar 60 s antes de comparar.
+
 ## Lo que este benchmark NO mide (para no vender de más)
 
 - **Concurrencia**: todo se midió con un solo cliente. Diez personas mirando a la vez multiplican la
