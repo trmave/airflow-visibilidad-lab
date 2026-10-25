@@ -165,8 +165,8 @@ dashboard["panels"][-1]["options"]["content"] = """
 ### Lo que cuesta (medido, no estimado)
 
 - **1,5 s por refresco completo**: 8 veces más lento que la vía A (172 ms) con el mismo volumen.
-- **~30 veces más CPU** en el componente que golpea (el webserver), porque cada panel es una
-  petición HTTP autenticada que a su vez consulta la base: se paga dos veces el mismo trabajo.
+- **1,3 s de CPU por refresco en el webserver**, frente a 17 ms netos de la vía A: cada panel es una
+  petición HTTP autenticada que a su vez consulta la base, así que se paga dos veces el mismo trabajo.
 - **Carga**: cada refresco golpea el **webserver** (Gunicorn), la pieza más frágil del stack.
 - **Requisito previo**: Airflow 2.8.1 solo acepta cookie de sesión por defecto; hubo que habilitar
   `basic_auth` y **reiniciar el webserver**.
