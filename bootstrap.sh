@@ -3,23 +3,40 @@
 # bootstrap.sh · levanta el laboratorio entero desde cero, en un comando.
 #
 #   git clone <repo> airflow-lab && cd airflow-lab
-#   bash bootstrap.sh
+#   bash bootstrap.sh              # levanta (o repara) el laboratorio
+#   bash bootstrap.sh --limpio     # borra volúmenes y lo recrea TODO desde cero
 #
 # Qué hace, en orden:
 #   1. Comprueba requisitos (docker, compose, puertos libres).
 #   2. Genera .env con claves aleatorias (si no existe).
-#   3. Construye y levanta los 8 servicios.
+#   3. Construye y levanta los 8 servicios (con --limpio, antes borra los volúmenes).
 #   4. Espera a que la metadata DB esté sana y a que `airflow db migrate` termine.
 #   5. Crea el rol de solo lectura `grafana_ro` (idempotente).
+#   5b. Crea el usuario Viewer de la API y genera el datasource de la vía C.
 #   6. Espera a que el scheduler parsee los 46 DAGs y los despausa.
 #   7. Siembra el histórico sintético (930 + 3.360 filas).
-#   8. Verifica los dos dashboards contra Grafana (12 + 11 paneles).
+#   8. Verifica las tres vías contra Grafana (13 + 12 + 8 paneles).
 #
 # Es idempotente: si ya está levantado, no rompe nada y vuelve a verificar.
-# Para empezar de cero de verdad:  docker compose down -v && bash bootstrap.sh
 # =============================================================================
 set -uo pipefail
 cd "$(dirname "$0")"
+
+# -----------------------------------------------------------------------------
+# Uso:
+#   bash bootstrap.sh            → levanta (o repara) el laboratorio
+#   bash bootstrap.sh --limpio   → borra volúmenes y lo recrea TODO desde cero
+# -----------------------------------------------------------------------------
+LIMPIO=0
+for arg in "$@"; do
+  case "$arg" in
+    --limpio|--from-scratch) LIMPIO=1 ;;
+    -h|--help)
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0 ;;
+    *) echo "opción desconocida: $arg (usa --limpio o --help)"; exit 2 ;;
+  esac
+done
 
 PUERTO_AIRFLOW=8085
 PUERTO_GRAFANA=3050
@@ -70,6 +87,14 @@ grep -q '^AIRFLOW_API_PASSWORD=' .env || { echo "AIRFLOW_API_PASSWORD=$(openssl 
 
 # --- 3 · levantar ------------------------------------------------------------
 paso "3/8 Levantando servicios"
+if [ "$LIMPIO" = "1" ]; then
+  info "modo --limpio: se borran contenedores y volúmenes (pgdata, grafanadata, influxdata)"
+  if docker compose down -v >/tmp/bootstrap-down.log 2>&1; then
+    ok "stack anterior eliminado (0 contenedores, 0 volúmenes)"
+  else
+    mal "no se pudo eliminar el stack anterior (ver /tmp/bootstrap-down.log)"
+  fi
+fi
 sudo chmod -R a+rX grafana 2>/dev/null || chmod -R a+rX grafana
 docker compose build collector >/dev/null 2>&1 && ok "imagen del colector construida"
 docker compose up -d >/tmp/bootstrap-up.log 2>&1 && ok "docker compose up -d" || { mal "falló compose up (ver /tmp/bootstrap-up.log)"; tail -5 /tmp/bootstrap-up.log; }
@@ -104,12 +129,28 @@ fi
 # --- 5b · opción C: usuario Viewer + datasource de la API -------------------
 paso "5b/8 Opción C · usuario de API y datasource"
 APIPASS=$(grep '^AIRFLOW_API_PASSWORD=' .env | cut -d= -f2)
-if docker exec airflow-lab-webserver bash -lc \
-     "airflow users create --username grafana_api --password '$APIPASS' \
-      --firstname Grafana --lastname API --role Viewer --email grafana-api@lab.local" >/dev/null 2>&1; then
-  ok "usuario grafana_api (rol Viewer) creado"
+# El usuario se crea con el CLI DENTRO del webserver: hay que esperar a que esté
+# arriba, o el `users create` falla y la vía C se queda sin credencial (bug real
+# detectado en la primera reconstrucción con --limpio).
+for i in $(seq 1 40); do
+  docker exec airflow-lab-webserver curl -sf -o /dev/null http://localhost:8080/health >/dev/null 2>&1 && break
+  sleep 5
+done
+salida_api=$(docker exec airflow-lab-webserver bash -lc \
+  "airflow users create --username grafana_api --password '$APIPASS' \
+   --firstname Grafana --lastname API --role Viewer --email grafana-api@lab.local" 2>&1)
+case "$salida_api" in
+  *"created with role"*)  ok "usuario grafana_api (rol Viewer) creado";;
+  *"already exists"*)     info "usuario grafana_api ya existía";;
+  *)                      mal "no se pudo crear grafana_api: $(printf '%s' "$salida_api" | tail -1)";;
+esac
+ROL_API=$(docker exec airflow-lab-pg psql -U airflow -d airflow -tAc \
+  "SELECT r.name FROM ab_user u JOIN ab_user_role ur ON ur.user_id=u.id
+   JOIN ab_role r ON r.id=ur.role_id WHERE u.username='grafana_api'" | tr -d ' ')
+if [ "$ROL_API" = "Viewer" ]; then
+  ok "verificado en la base: grafana_api → Viewer (lee, no puede disparar DAGs)"
 else
-  info "usuario grafana_api ya existía"
+  mal "grafana_api no tiene el rol Viewer (encontrado: '${ROL_API:-ninguno}')"
 fi
 if [ -f grafana/provisioning/datasources/airflow-api.yaml.example ]; then
   python3 - "$PWD" <<'PY'

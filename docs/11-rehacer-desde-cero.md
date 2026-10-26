@@ -20,8 +20,13 @@ completo**, sin pasos que estén solo en la cabeza de nadie. Se probó borrando 
 ```bash
 git clone https://github.com/trmave/airflow-visibilidad-lab.git airflow-lab
 cd airflow-lab
-bash bootstrap.sh
+bash bootstrap.sh              # levanta o repara
+bash bootstrap.sh --limpio     # borra volúmenes y lo recrea TODO desde cero
 ```
+
+`--limpio` hace el `docker compose down -v` por ti antes de empezar: en un solo comando pasa de
+"hay un laboratorio a medias" a "laboratorio nuevo y verificado". Es el que se usa para demostrar
+que el repositorio basta.
 
 Si el host no tiene el repo (o no hay red hacia GitHub), copiar el directorio y ejecutar igual:
 el bootstrap no usa git.
@@ -40,12 +45,23 @@ el bootstrap no usa git.
 | 8 | Verifica **los dos dashboards** contra Grafana | `✓ vía A · 12 paneles OK` / `✓ vía B · 9 paneles OK` |
 
 Es **idempotente**: si ya está levantado, no borra nada y vuelve a verificar. Para empezar de cero
-de verdad hay que borrar los volúmenes:
+de verdad, `bash bootstrap.sh --limpio` (hace el `down -v` por ti antes de empezar), o a mano:
 
 ```bash
 docker compose down -v      # borra pgdata, grafanadata e influxdata
 bash bootstrap.sh
 ```
+
+### ¿Y los 46 DAGs? También están en el repositorio
+
+- **46 ficheros `.py` versionados** en `dags/`: 6 escritos a mano (los que cuentan la historia:
+  éxito, fallo, lento, cola, diario, ML) y 40 generados (`demo_bulk_*`) que dan volumen realista.
+- Los 40 se pueden **regenerar** con `python3 scripts/generate_demo_dags.py --cantidad 40`, y ese
+  script está versionado: no son ficheros que aparecieron por arte de magia.
+- `bootstrap.sh` **no los regenera**: los ficheros del repo son la fuente de verdad. Si se
+  regeneran, hay que hacer `chmod 644 dags/*.py` y commitear (Airflow los lee como uid 50000).
+- El scheduler los parsea y los deja `is_paused=true` por defecto; el paso 6 del bootstrap los
+  despausa, porque un DAG pausado no genera ejecuciones y el tablero saldría vacío.
 
 ## Salida real de una reconstrucción desde cero
 
