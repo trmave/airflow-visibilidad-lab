@@ -105,7 +105,14 @@ fi
     # root:root (lo que pasa en un clon recién bajado), el `airflow db migrate` del init
     # muere con: PermissionError: [Errno 13] Permission denied: '/opt/airflow/logs/scheduler'.
     mkdir -p logs
-    chmod 777 logs 2>/dev/null || info "no se pudo abrir permisos de ./logs (revisa que seas su dueño)"
+    DUENO=$(stat -c '%u' logs 2>/dev/null || echo 0)
+    if [ "$DUENO" = "50000" ]; then
+      ok "./logs ya es del uid de Airflow (50000)"
+    elif chmod 777 logs 2>/dev/null; then
+      ok "./logs preparado para que Airflow escriba"
+    else
+      info "./logs pertenece al uid $DUENO; si el init falla: sudo chown -R 50000:0 logs"
+    fi
 sudo chmod -R a+rX grafana 2>/dev/null || chmod -R a+rX grafana
 docker compose build collector >/dev/null 2>&1 && ok "imagen del colector construida"
 docker compose up -d >/tmp/bootstrap-up.log 2>&1 && ok "docker compose up -d" || { mal "falló compose up (ver /tmp/bootstrap-up.log)"; tail -5 /tmp/bootstrap-up.log; }
@@ -152,7 +159,7 @@ salida_api=$(docker exec airflow-lab-webserver bash -lc \
    --firstname Grafana --lastname API --role Viewer --email grafana-api@lab.local" 2>&1)
 case "$salida_api" in
   *"created with role"*)  ok "usuario grafana_api (rol Viewer) creado";;
-  *"already exists"*)     info "usuario grafana_api ya existía";;
+  *"already exist"*)      info "usuario grafana_api ya existía";;
   *)                      mal "no se pudo crear grafana_api: $(printf '%s' "$salida_api" | tail -1)";;
 esac
 ROL_API=$(docker exec airflow-lab-pg psql -U airflow -d airflow -tAc \
