@@ -568,7 +568,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT dag_id,\n       run_id,\n       start_date,\n       round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos\nFROM dag_run\nWHERE state = 'running'\n  AND start_date < now() - interval '1 hour'\nORDER BY start_date\nLIMIT 50"
+          "rawSql": "WITH det AS (\nSELECT dag_id,\n   run_id,\n   start_date,\n   round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos\nFROM dag_run\nWHERE state = 'running'\nAND start_date < now() - interval '1 hour'\nORDER BY start_date\nLIMIT 50\n)\n-- Fila de cortesía: si no hay DAGs lentos, el panel dice que todo está bien\n-- en vez de mostrar \"No data\", que parece un tablero roto.\nSELECT det.* FROM det\nUNION ALL\nSELECT '— ninguno —'::text,\n'no hay DAGs por encima de 1 hora'::text,\nNULL::timestamptz,\nNULL::int\nWHERE NOT EXISTS (SELECT 1 FROM det)"
         }
       ],
       "options": {
@@ -622,7 +622,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT dag_id,\n       run_id,\n       queued_at,\n       round(extract(epoch FROM (now() - queued_at)) / 60)::int AS minutos_esperando\nFROM dag_run\nWHERE state = 'queued'\n  AND queued_at < now() - interval '15 minutes'\nORDER BY queued_at\nLIMIT 50"
+          "rawSql": "WITH det AS (\nSELECT dag_id,\n   run_id,\n   queued_at,\n   round(extract(epoch FROM (now() - queued_at)) / 60)::int AS minutos_esperando\nFROM dag_run\nWHERE state = 'queued'\nAND queued_at < now() - interval '15 minutes'\nORDER BY queued_at\nLIMIT 50\n)\nSELECT det.* FROM det\nUNION ALL\nSELECT '— ninguno —'::text,\n'nada lleva más de 15 min en cola'::text,\nNULL::timestamptz,\nNULL::int\nWHERE NOT EXISTS (SELECT 1 FROM det)"
         }
       ],
       "options": {

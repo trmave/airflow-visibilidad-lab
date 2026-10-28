@@ -67,26 +67,46 @@ ORDER BY fallos DESC
 LIMIT 10
 """,
     "tabla_lentos": """
+WITH det AS (
 SELECT dag_id,
-       run_id,
-       start_date,
-       round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos
+   run_id,
+   start_date,
+   round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos
 FROM dag_run
 WHERE state = 'running'
-  AND start_date < now() - interval '1 hour'
+AND start_date < now() - interval '1 hour'
 ORDER BY start_date
 LIMIT 50
+)
+-- Fila de cortesía: si no hay DAGs lentos, el panel dice que todo está bien
+-- en vez de mostrar "No data", que parece un tablero roto.
+SELECT det.* FROM det
+UNION ALL
+SELECT '— ninguno —'::text,
+'no hay DAGs por encima de 1 hora'::text,
+NULL::timestamptz,
+NULL::int
+WHERE NOT EXISTS (SELECT 1 FROM det)
 """,
     "tabla_cola": """
+WITH det AS (
 SELECT dag_id,
-       run_id,
-       queued_at,
-       round(extract(epoch FROM (now() - queued_at)) / 60)::int AS minutos_esperando
+   run_id,
+   queued_at,
+   round(extract(epoch FROM (now() - queued_at)) / 60)::int AS minutos_esperando
 FROM dag_run
 WHERE state = 'queued'
-  AND queued_at < now() - interval '15 minutes'
+AND queued_at < now() - interval '15 minutes'
 ORDER BY queued_at
 LIMIT 50
+)
+SELECT det.* FROM det
+UNION ALL
+SELECT '— ninguno —'::text,
+'nada lleva más de 15 min en cola'::text,
+NULL::timestamptz,
+NULL::int
+WHERE NOT EXISTS (SELECT 1 FROM det)
 """,
     "ultimo_estado": """
 WITH ultimo AS (
