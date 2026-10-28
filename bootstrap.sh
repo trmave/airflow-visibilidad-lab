@@ -38,9 +38,15 @@ for arg in "$@"; do
   esac
 done
 
-PUERTO_AIRFLOW=8085
-PUERTO_GRAFANA=3050
-PUERTO_WEBHOOK=8099
+# Puertos y host configurables: si algo está ocupado, basta exportar otra cosa
+#   LAB_WEB_PORT=9085 LAB_GRAFANA_PORT=4050 LAB_WEBHOOK_PORT=9099 bash bootstrap.sh
+PUERTO_AIRFLOW=${LAB_WEB_PORT:-8085}
+PUERTO_GRAFANA=${LAB_GRAFANA_PORT:-3050}
+PUERTO_WEBHOOK=${LAB_WEBHOOK_PORT:-8099}
+IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+export LAB_WEB_PORT=$PUERTO_AIRFLOW LAB_GRAFANA_PORT=$PUERTO_GRAFANA LAB_WEBHOOK_PORT=$PUERTO_WEBHOOK
+export LAB_HOST=${LAB_HOST:-${IP:-localhost}}
+export LAB_PROJECT=${LAB_PROJECT:-airflow-lab}
 FALLOS=0
 
 paso()  { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
@@ -209,7 +215,6 @@ else
 fi
 
 # --- resumen -----------------------------------------------------------------
-IP=$(hostname -I | awk '{print $1}')
 printf '\n\033[1m%s\033[0m\n' "──────────────────────────────────────────────────────────"
 printf '  Vía A · en vivo    http://%s:%s/d/airflow-visibilidad\n' "$IP" "$PUERTO_GRAFANA"
 printf '  Vía B · histórico  http://%s:%s/d/airflow-historico\n' "$IP" "$PUERTO_GRAFANA"

@@ -1,4 +1,4 @@
-name: airflow-lab
+name: ${LAB_PROJECT:-airflow-lab}
 
 # ============================================================================
 # Laboratorio de visibilidad de Airflow 2.8.1 (Python 3.10)
@@ -19,7 +19,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__PARALLELISM: "8"
     AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "4"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
-    AIRFLOW__WEBSERVER__BASE_URL: http://192.168.3.39:8085
+    # Se calcula desde el host donde corre: sirve igual en tu portátil que en un servidor.
+    AIRFLOW__WEBSERVER__BASE_URL: http://${LAB_HOST:-localhost}:${LAB_WEB_PORT:-8085}
     AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: "300"
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
@@ -88,7 +89,7 @@ services:
     container_name: airflow-lab-webserver
     command: ["webserver"]
     ports:
-      - "8085:8080"
+      - "${LAB_WEB_PORT:-8085}:8080"
     depends_on:
       airflow-pg:
         condition: service_healthy
@@ -150,7 +151,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     ports:
-      - "3050:3000"
+      - "${LAB_GRAFANA_PORT:-3050}:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q '\"database\": \"ok\"'"]
       interval: 15s
@@ -228,7 +229,7 @@ services:
     volumes:
       - ./webhook/server.py:/app/server.py:ro
     ports:
-      - "8099:8099"
+      - "${LAB_WEBHOOK_PORT:-8099}:8099"
     logging:
       driver: json-file
       options:

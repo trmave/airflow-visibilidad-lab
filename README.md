@@ -1,3 +1,7 @@
+> **¿Solo quieres levantarlo?** → [`QUICKSTART.md`](QUICKSTART.md): 3 comandos y ~5 minutos.
+> **¿Te lo acaban de entregar?** → [`docs/15-entrega-a-un-tercero.md`](docs/15-entrega-a-un-tercero.md).
+> **¿Está sano?** → `bash check.sh`.
+
 # Airflow 2.8.1 · Visibilidad de DAGs en Grafana
 
 Laboratorio reproducible que responde, en un solo tablero, las cinco preguntas que hoy no
@@ -6,10 +10,10 @@ tienen respuesta en el Airflow del cliente:
 | # | Pregunta | Panel | Valor en este laboratorio |
 |---|---|---|---|
 | 1 | ¿Cuántos DAGs hay en total? | `DAGs activos` | **46** |
-| 2 | ¿Cuántos se ejecutaron bien? | `Runs OK · 24 h` | **266** |
-| 3 | ¿Cuántos fallaron? | `Runs fallidos · 24 h` | **41** |
-| 4 | ¿Cuántos llevan corriendo más de 1 hora? | `Corriendo > 1 hora` | **2** (115 y 75 min) |
-| 5 | ¿Cuántos están atascados en cola? | `En cola > 15 min` | **8** |
+| 2 | ¿Cuántos se ejecutaron bien? | `Runs OK · 24 h` | **~1.226** |
+| 3 | ¿Cuántos fallaron? | `Runs fallidos · 24 h` | **~305** |
+| 4 | ¿Cuántos llevan corriendo más de 1 hora? | `Corriendo > 1 hora` | **0-1** (con `demo_04`, 70 min) |
+| 5 | ¿Cuántos están atascados en cola? | `En cola > 15 min` | **0-x** |
 
 > Cifras de la última verificación (23-oct-2026, 05:35 UTC). El laboratorio sigue vivo y los 46
 > DAGs generan ejecuciones, así que los conteos suben con el tiempo: eso es exactamente lo que
