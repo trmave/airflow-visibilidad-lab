@@ -546,8 +546,8 @@
     {
       "id": 8,
       "type": "table",
-      "title": "Corriendo más de 1 hora · detalle",
-      "description": "Quién se está pasando del umbral, con minutos transcurridos.",
+      "title": "Corriendo ahora mismo · cuánto lleva cada uno",
+      "description": "Todas las ejecuciones en curso con su tiempo transcurrido. La columna umbral marca las que ya pasaron de 1 hora.",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "airflow-pg"
@@ -568,7 +568,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "WITH det AS (\nSELECT dag_id,\n   run_id,\n   start_date,\n   round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos\nFROM dag_run\nWHERE state = 'running'\nAND start_date < now() - interval '1 hour'\nORDER BY start_date\nLIMIT 50\n)\n-- Fila de cortesía: si no hay DAGs lentos, el panel dice que todo está bien\n-- en vez de mostrar \"No data\", que parece un tablero roto.\nSELECT det.* FROM det\nUNION ALL\nSELECT '— ninguno —'::text,\n'no hay DAGs por encima de 1 hora'::text,\nNULL::timestamptz,\nNULL::int\nWHERE NOT EXISTS (SELECT 1 FROM det)"
+          "rawSql": "WITH det AS (\n    SELECT dag_id,\n           run_id,\n           start_date,\n           round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos,\n           CASE WHEN extract(epoch FROM (now() - start_date)) > 3600\n                THEN 'por encima de 1 h' ELSE 'dentro de plazo' END AS umbral\n    FROM dag_run\n    WHERE state = 'running'\n    ORDER BY start_date\n    LIMIT 50\n)\n-- Se listan TODAS las ejecuciones en curso con su tiempo transcurrido: el panel\n-- nunca queda vacío mientras haya algo corriendo, y la columna \"umbral\" marca\n-- cuáles pasaron de 1 hora.\nSELECT det.* FROM det\nUNION ALL\nSELECT '— ninguna —'::text,\n       'no hay ejecuciones en curso'::text,\n       NULL::timestamptz,\n       NULL::int,\n       NULL::text\nWHERE NOT EXISTS (SELECT 1 FROM det)"
         }
       ],
       "options": {

@@ -68,24 +68,27 @@ LIMIT 10
 """,
     "tabla_lentos": """
 WITH det AS (
-SELECT dag_id,
-   run_id,
-   start_date,
-   round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos
-FROM dag_run
-WHERE state = 'running'
-AND start_date < now() - interval '1 hour'
-ORDER BY start_date
-LIMIT 50
+    SELECT dag_id,
+           run_id,
+           start_date,
+           round(extract(epoch FROM (now() - start_date)) / 60)::int AS minutos,
+           CASE WHEN extract(epoch FROM (now() - start_date)) > 3600
+                THEN 'por encima de 1 h' ELSE 'dentro de plazo' END AS umbral
+    FROM dag_run
+    WHERE state = 'running'
+    ORDER BY start_date
+    LIMIT 50
 )
--- Fila de cortesía: si no hay DAGs lentos, el panel dice que todo está bien
--- en vez de mostrar "No data", que parece un tablero roto.
+-- Se listan TODAS las ejecuciones en curso con su tiempo transcurrido: el panel
+-- nunca queda vacío mientras haya algo corriendo, y la columna "umbral" marca
+-- cuáles pasaron de 1 hora.
 SELECT det.* FROM det
 UNION ALL
-SELECT '— ninguno —'::text,
-'no hay DAGs por encima de 1 hora'::text,
-NULL::timestamptz,
-NULL::int
+SELECT '— ninguna —'::text,
+       'no hay ejecuciones en curso'::text,
+       NULL::timestamptz,
+       NULL::int,
+       NULL::text
 WHERE NOT EXISTS (SELECT 1 FROM det)
 """,
     "tabla_cola": """
@@ -329,9 +332,10 @@ panels = [
     barchart(7, "Top 10 DAGs con más fallos · $ventana", SQL["top_fallos"],
              {"h": 9, "w": 10, "x": 14, "y": 5},
              desc="Los DAGs que más veces fallaron en la ventana."),
-    table(8, "Corriendo más de 1 hora · detalle", SQL["tabla_lentos"],
+    table(8, "Corriendo ahora mismo · cuánto lleva cada uno", SQL["tabla_lentos"],
           {"h": 8, "w": 12, "x": 0, "y": 14},
-          desc="Quién se está pasando del umbral, con minutos transcurridos."),
+          desc=("Todas las ejecuciones en curso con su tiempo transcurrido. La columna "
+                "umbral marca las que ya pasaron de 1 hora.")),
     table(9, "En cola más de 15 minutos · detalle", SQL["tabla_cola"],
           {"h": 8, "w": 12, "x": 12, "y": 14},
           desc="Runs esperando turno: revisar recursos, pools y max_active_runs."),

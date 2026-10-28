@@ -1,4 +1,9 @@
-"""DAG de laboratorio: max_active_runs=1 con tarea lenta: genera dag_runs en estado queued."""
+"""DAG de laboratorio: tarea de 70 min con max_active_runs=1.
+
+Cumple dos papeles en la demo: genera dag_runs 'queued' (por max_active_runs=1)
+y es el único que supera la hora, para que el KPI "Corriendo > 1 hora" tenga
+un caso real que enseñar.
+"""
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -20,4 +25,5 @@ with DAG(
     default_args=DEFAULT_ARGS,
     tags=["demo", "cola"],
 ) as dag:
-    sync = BashOperator(task_id="sync_erp", bash_command="echo 'sincronizando ERP'; sleep 1500")
+    # 70 minutos: supera el umbral de 1 hora que vigila el tablero.
+    sync = BashOperator(task_id="sync_erp", bash_command="echo 'sincronizando ERP'; sleep 4200")
