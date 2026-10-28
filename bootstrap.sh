@@ -101,6 +101,11 @@ if [ "$LIMPIO" = "1" ]; then
     mal "no se pudo eliminar el stack anterior (ver /tmp/bootstrap-down.log)"
   fi
 fi
+    # Airflow corre como uid 50000 dentro del contenedor. Si Docker crea ./logs como
+    # root:root (lo que pasa en un clon recién bajado), el `airflow db migrate` del init
+    # muere con: PermissionError: [Errno 13] Permission denied: '/opt/airflow/logs/scheduler'.
+    mkdir -p logs
+    chmod 777 logs 2>/dev/null || info "no se pudo abrir permisos de ./logs (revisa que seas su dueño)"
 sudo chmod -R a+rX grafana 2>/dev/null || chmod -R a+rX grafana
 docker compose build collector >/dev/null 2>&1 && ok "imagen del colector construida"
 docker compose up -d >/tmp/bootstrap-up.log 2>&1 && ok "docker compose up -d" || { mal "falló compose up (ver /tmp/bootstrap-up.log)"; tail -5 /tmp/bootstrap-up.log; }
