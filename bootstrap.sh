@@ -115,7 +115,19 @@ fi
     fi
 sudo chmod -R a+rX grafana 2>/dev/null || chmod -R a+rX grafana
 docker compose build collector >/dev/null 2>&1 && ok "imagen del colector construida"
-docker compose up -d >/tmp/bootstrap-up.log 2>&1 && ok "docker compose up -d" || { mal "falló compose up (ver /tmp/bootstrap-up.log)"; tail -5 /tmp/bootstrap-up.log; }
+if docker compose up -d >/tmp/bootstrap-up.log 2>&1; then
+  ok "docker compose up -d"
+else
+  # Si el stack no levanta, no tiene sentido seguir: los pasos 4-8 darían errores
+  # en cascada y el resumen final parecería un desastre sin decir la causa real.
+  mal "falló compose up (ver /tmp/bootstrap-up.log)"
+  tail -5 /tmp/bootstrap-up.log
+  echo
+  printf '\033[0;31mSe detiene aquí para no acumular errores en cascada.\033[0m\n'
+  echo "Causa más frecuente: permisos de ./logs (Airflow corre como uid 50000)."
+  echo "Prueba:  sudo chown -R 50000:0 logs  &&  bash bootstrap.sh"
+  exit 1
+fi
 
 # --- 4 · esperar la base y la migración -------------------------------------
 paso "4/8 Esperando la metadata DB y la migración de Airflow"
